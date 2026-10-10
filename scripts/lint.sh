@@ -67,11 +67,15 @@ collect() {
   done < <(git ls-files -z -- "$@")
 }
 
+# Categories that run more than one tool must aggregate explicitly: run() calls them inside an
+# `if`, where bash suspends `set -e`, so only the last command's status would be seen otherwise.
 lint_shell() {
+  local rc=0
   collect '*.sh' .githooks
-  tool shellcheck "${SHELLCHECK_IMAGE}" "" "${files[@]}"
+  tool shellcheck "${SHELLCHECK_IMAGE}" "" "${files[@]}" || rc=1
   # shfmt reads formatting options from .editorconfig; -d prints a diff and fails on differences.
-  tool shfmt "${SHFMT_IMAGE}" "" -d "${files[@]}"
+  tool shfmt "${SHFMT_IMAGE}" "" -d "${files[@]}" || rc=1
+  return "${rc}"
 }
 
 lint_docker() {
@@ -92,16 +96,18 @@ lint_editorconfig() {
 }
 
 lint_workflows() {
+  local rc=0
   if command -v actionlint >/dev/null 2>&1; then
-    actionlint
+    actionlint || rc=1
   else
-    docker run --rm -v "${PWD}:/work:ro" -w /work rhysd/actionlint:1.7.12 -color
+    docker run --rm -v "${PWD}:/work:ro" -w /work rhysd/actionlint:1.7.12 -color || rc=1
   fi
   if command -v zizmor >/dev/null 2>&1; then
-    zizmor --no-progress .github/workflows
+    zizmor --no-progress .github/workflows || rc=1
   else
     echo "zizmor not installed; CI runs it through zizmor-action" >&2
   fi
+  return "${rc}"
 }
 
 lint_commits() {
