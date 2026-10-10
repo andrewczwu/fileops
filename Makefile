@@ -45,7 +45,7 @@ build: restore ## Build all projects
 lint: restore ## C# format/style, shell, Dockerfile, YAML, Markdown, editorconfig, workflows, commit messages, secrets
 	dotnet format --no-restore --verify-no-changes
 	scripts/lint.sh
-	@command -v gitleaks >/dev/null && gitleaks git --no-banner --redact . || echo "gitleaks not installed; CI scans the full history"
+	@if command -v gitleaks >/dev/null; then gitleaks git --no-banner --redact .; else echo "gitleaks not installed; CI scans the full history"; fi
 
 format: ## Apply formatting fixes
 	dotnet format

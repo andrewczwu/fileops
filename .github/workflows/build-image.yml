@@ -20,9 +20,10 @@ on:
 permissions:
   contents: read
 
+# Per-ref group: a pull-request build must never cancel the main publish that CI pulls from.
 concurrency:
-  group: build-image
-  cancel-in-progress: true
+  group: build-image-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
