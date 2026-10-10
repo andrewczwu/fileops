@@ -17,7 +17,9 @@ has no matching section below.
   `SHA256SUMS` is itself covered by the provenance attestation; packaging timestamps come from
   the tagged commit (`SOURCE_DATE_EPOCH`).
 - Pre-release tags (`v1.2.0-rc.1`) publish as GitHub pre-releases and may reuse the final
-  version's changelog section.
+  version's changelog section. The `.deb` file is named with the SemVer version
+  (`fileops_1.2.0-rc.1_amd64.deb`) because GitHub rewrites `~` in asset names, which broke the
+  `SHA256SUMS` match in `v1.1.0-rc.1`; the package's own version field keeps the Debian `~` form.
 - CI could not fail on a found secret (`make lint`), two smoke-test checks could never fail
   (`!` pipelines are exempt from `set -e`), a pull-request image build could cancel the `main`
   publish, and runs on `main` could be cancelled by the next push.

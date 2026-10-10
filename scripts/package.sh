@@ -58,8 +58,11 @@ gzip -9 -n -c packaging/fileops.1 >"${STAGE}/fileops.1.gz"
 # nfpm expands ${VAR} in top-level fields only, so the dependency line is substituted into a staged copy.
 sed "s|@LIBC6_DEPENDS@|libc6 (>= ${GLIBC_FLOOR})|" packaging/nfpm.yaml >"${STAGE}/nfpm.yaml"
 
+# The control file carries the Debian version (1.2.3~rc.1, so dpkg sorts it before 1.2.3), but the
+# file is named with the SemVer form: GitHub release assets cannot contain `~` and would rename it,
+# breaking the match with SHA256SUMS.
 VERSION="${DEB_VERSION}" ARCH="${ARCH}" \
-  nfpm package --config "${STAGE}/nfpm.yaml" --packager deb --target "${OUT}/"
+  nfpm package --config "${STAGE}/nfpm.yaml" --packager deb --target "${OUT}/fileops_${VERSION}_${ARCH}.deb"
 
 (
   cd "${OUT}"
