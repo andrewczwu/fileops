@@ -43,7 +43,9 @@ dpkg-deb -c /pkg/*.deb | grep -q ' \./usr/share/doc/fileops/copyright$'
 dpkg-deb -c /pkg/*.deb | grep -q ' \./usr/share/doc/fileops/changelog\.gz$'
 
 dpkg -r fileops >/dev/null
-if command -v fileops >/dev/null; then echo "fileops still on PATH after removal" >&2; exit 1; fi
+# dash caches command locations, so `command -v` would still find the binary; check the file and dpkg.
+hash -r 2>/dev/null || true
+if test -e /usr/bin/fileops || dpkg -s fileops >/dev/null 2>&1; then echo "fileops still installed after removal" >&2; exit 1; fi
 echo "removed cleanly"
 EOF
 
