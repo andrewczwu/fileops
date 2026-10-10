@@ -1,0 +1,27 @@
+# Keeps SHA-pinned actions, NuGet packages and the base image current via weekly grouped PRs.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      dotnet:
+        patterns: ["Microsoft.*", "System.*"]
+      opentelemetry:
+        patterns: ["OpenTelemetry*"]
+      test:
+        patterns: ["xunit*", "coverlet*"]
+
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly

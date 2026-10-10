@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Pre-commit guard: block secrets and broken workflow files before they reach history.
+# Enable with `make setup` (sets core.hooksPath to .githooks).
+set -euo pipefail
+
+status=0
+
+if command -v gitleaks >/dev/null 2>&1; then
+  if ! gitleaks git --pre-commit --staged --no-banner --redact; then
+    echo "pre-commit: gitleaks found a possible secret in staged changes. Remove it, or add a documented allowlist entry to .gitleaks.toml." >&2
+    status=1
+  fi
+else
+  echo "pre-commit: gitleaks not installed (brew install gitleaks); secret scan skipped." >&2
+fi
+
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '^\.github/workflows/.*\.ya?ml$'; then
+  if command -v actionlint >/dev/null 2>&1; then
+    actionlint || status=1
+  else
+    echo "pre-commit: actionlint not installed (brew install actionlint); workflow lint skipped." >&2
+  fi
+fi
+
+exit "${status}"

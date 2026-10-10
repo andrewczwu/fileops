@@ -1,0 +1,13 @@
+# gitleaks configuration: default rules plus repository-specific allowlisting.
+# Scanned by the pre-commit hook (staged changes) and by CI (full history).
+title = "fileops"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Files that legitimately contain high-entropy strings"
+paths = [
+  '''packages\.lock\.json$''',   # NuGet content hashes
+  '''\.github/workflows/.*\.ya?ml$''', # action pins are commit SHAs, not secrets
+]
