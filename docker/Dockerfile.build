@@ -8,11 +8,13 @@
 ARG BASE_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.401-noble-aot
 FROM ${BASE_IMAGE}
 
-# make: the repository's task runner. jq: telemetry summaries. nfpm: builds the .deb without Debian tooling.
+# make: the repository's task runner. jq: telemetry summaries. nfpm: builds the .deb without Debian
+# tooling. lintian: validates the .deb in the same job that builds it (saves a runner, an artifact
+# round-trip and an apt install on the critical path).
 # Unprivileged user: lets permission-denied tests run (root bypasses file modes).
 ARG NFPM_VERSION=2.47.0
 RUN apt-get update \
- && apt-get install -y --no-install-recommends make jq ca-certificates curl \
+ && apt-get install -y --no-install-recommends make jq ca-certificates curl lintian \
  && rm -rf /var/lib/apt/lists/* \
  && ARCH="$(dpkg --print-architecture)" \
  && curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_${ARCH}.deb" -o /tmp/nfpm.deb \
