@@ -7,6 +7,13 @@
 #   make smoke           install the .deb into clean Debian/Ubuntu containers and exercise it
 #   make ci              lint, test, package, lintian, smoke in order (Linux with Docker)
 
+# GNU Make 3.82 or newer is required: older versions silently ignore .SHELLFLAGS and would run
+# recipes without `-euo pipefail`, letting a failing pipeline stage pass locally that fails in CI.
+# macOS ships 3.81 (the last GPLv2 release); `brew install make` provides a current one as `gmake`.
+ifneq ($(filter 3.80 3.81,$(MAKE_VERSION)),)
+$(error GNU Make 3.82 or newer is required, found $(MAKE_VERSION). On macOS: brew install make, then use gmake or put "$$(brew --prefix make)/libexec/gnubin" first on PATH)
+endif
+
 SHELL := /usr/bin/env bash
 .SHELLFLAGS := -euo pipefail -c
 .DEFAULT_GOAL := help
