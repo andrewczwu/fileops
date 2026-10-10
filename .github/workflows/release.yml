@@ -13,6 +13,10 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+defaults:
+  run:
+    shell: bash # container steps otherwise get `sh -e`, which has no pipefail
+
 env:
   DOTNET_NOLOGO: "1"
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
@@ -46,8 +50,8 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: scripts/ci/version-from-tag.sh "$TAG" >> "$GITHUB_OUTPUT"
       - name: Pin timestamps to the tagged commit
-        # Packaging embeds dates (Debian changelog, tarball mtimes); taking them from the commit
-        # makes two builds of the same tag produce identical bytes.
+        # Packaging embeds dates (Debian changelog, tarball mtimes); taking them from the commit is
+        # meant to make two builds of the same tag identical (not yet verified by a double build).
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
       # Deliberately no package cache here: release builds restore from scratch so a poisoned
       # cache entry from a pull request can never reach a published artefact.

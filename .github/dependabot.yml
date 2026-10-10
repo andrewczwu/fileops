@@ -1,4 +1,4 @@
-# Keeps SHA-pinned actions, NuGet packages and the base image current via weekly grouped PRs.
+# Keeps SHA-pinned actions, NuGet packages and the base image current via weekly PRs (grouped where configured).
 # Each ecosystem waits seven days after a version is published before proposing it, so a release
 # that turns out to be compromised or broken has time to be yanked before it reaches this repo.
 version: 2
