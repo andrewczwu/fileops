@@ -116,6 +116,32 @@ public sealed partial class CliContractTests : IDisposable
     }
 
     [Theory]
+    [InlineData("create", "")]
+    [InlineData("copy", "", "dst")]
+    [InlineData("delete", "")]
+    public void Empty_path_argument_is_a_usage_error_with_failure_telemetry(params string[] args)
+    {
+        var result = Tool.Run(_dir.Path, args);
+
+        Assert.Equal((int)ExitCode.UsageError, result.ExitCode);
+        Assert.Equal("UsageError", result.Log(LogEvents.OperationFailed).GetProperty("State").GetProperty("ExitCode").GetString());
+        Assert.Contains("must not be empty", Assert.Single(result.Messages), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Long_file_names_work_end_to_end()
+    {
+        var name = new string('n', 240);
+
+        var created = Tool.Run(_dir.Path, "create", name, "--text", "x");
+        var copied = Tool.Run(_dir.Path, "copy", name, name[..239] + "2");
+
+        Assert.Equal(0, created.ExitCode);
+        Assert.Equal(0, copied.ExitCode);
+        Assert.Empty(_dir.LeftoverTempFiles());
+    }
+
+    [Theory]
     [InlineData]
     [InlineData("create")]
     [InlineData("copy", "only-one")]

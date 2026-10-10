@@ -54,6 +54,47 @@ public sealed class CopyTests : IDisposable
         Assert.Equal(File.GetUnixFileMode(source), File.GetUnixFileMode(destination));
     }
 
+    [NonRootFact]
+    public void Temp_file_carries_the_source_mode_before_any_content_is_written()
+    {
+        // A private source must not be world-readable even for the instant between write and rename.
+        var source = _dir.WriteFile("private", new string('x', 64 * 1024));
+        File.SetUnixFileMode(source, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        var destination = _dir.File("copy");
+        UnixFileMode? observed = null;
+        using var watcher = new FileSystemWatcher(_dir.Path, ".*.tmp") { EnableRaisingEvents = true };
+        watcher.Created += (_, e) => observed ??= TryGetMode(e.FullPath);
+
+        _ops.Sut.Copy(source, destination);
+
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(destination));
+        if (observed is { } mode)
+        {
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, mode);
+        }
+
+        static UnixFileMode? TryGetMode(string path)
+        {
+            try
+            {
+                return File.GetUnixFileMode(path);
+            }
+            catch (IOException)
+            {
+                return null; // already renamed
+            }
+        }
+    }
+
+    [Fact]
+    public void Empty_source_or_destination_is_a_usage_error()
+    {
+        var source = _dir.WriteFile("src", "x");
+
+        Assert.Equal(ExitCode.UsageError, Assert.Throws<FileOpsException>(() => _ops.Sut.Copy(source, "")).ExitCode);
+        Assert.Equal(ExitCode.UsageError, Assert.Throws<FileOpsException>(() => _ops.Sut.Copy("", _dir.File("dst"))).ExitCode);
+    }
+
     [Fact]
     public void Fails_with_NotFound_when_source_missing()
     {

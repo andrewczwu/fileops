@@ -71,6 +71,43 @@ public sealed class CreateTests : IDisposable
         Assert.Equal(ExitCode.NotFound, ex.ExitCode);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Empty_path_is_a_usage_error_with_failure_telemetry(string path)
+    {
+        var ex = Assert.Throws<FileOpsException>(() => _ops.Sut.Create(path));
+
+        Assert.Equal(ExitCode.UsageError, ex.ExitCode);
+        Assert.Equal("UsageError", _ops.LogRecord(LogEvents.OperationFailed).GetStructuredStateValue("ExitCode"));
+        Assert.Equal(ActivityStatusCode.Error, _ops.Span(FileOperation.Create).Status);
+    }
+
+    [Fact]
+    public void Accepts_names_close_to_the_file_system_limit()
+    {
+        // 240 bytes is a legal name; the temp file's decoration must not push it past 255.
+        var path = _dir.File(new string('n', 240));
+
+        var result = _ops.Sut.Create(path, "ok");
+
+        Assert.Equal(2, result.Bytes);
+        Assert.Equal("ok", File.ReadAllText(path));
+        Assert.Empty(_dir.LeftoverTempFiles());
+    }
+
+    [NonRootFact]
+    public void Overwrite_keeps_the_existing_files_mode()
+    {
+        var path = _dir.WriteFile("secret", "old");
+        File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+
+        _ops.Sut.Create(path, "new", overwrite: true);
+
+        Assert.Equal("new", File.ReadAllText(path));
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
+    }
+
     [Fact]
     public void Refuses_path_that_is_a_directory()
     {
