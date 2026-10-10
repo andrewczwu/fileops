@@ -147,12 +147,17 @@ public sealed partial class CliContractTests : IDisposable
     [InlineData("copy", "only-one")]
     [InlineData("bogus")]
     [InlineData("create", "x", "--nope")]
-    public void Invalid_usage_exits_1_and_prints_help_on_stderr(params string[] args)
+    [InlineData("create", "a", "b", "c")]
+    [InlineData("--log-format", "xml", "create", "x")]
+    public void Invalid_usage_exits_1_with_messages_on_stderr_and_nothing_on_stdout(params string[] args)
     {
         var result = Tool.Run(_dir.Path, args);
 
         Assert.Equal((int)ExitCode.UsageError, result.ExitCode);
-        Assert.NotEqual(string.Empty, result.Stderr);
+        Assert.Equal(string.Empty, result.Stdout);
+        Assert.NotEmpty(result.Messages); // every stderr line is a `fileops: ...` line
+        Assert.All(result.Stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries), line => Assert.StartsWith("fileops: ", line, StringComparison.Ordinal));
+        Assert.Contains("run 'fileops --help' for usage", result.Stderr, StringComparison.Ordinal);
         Assert.Empty(result.LogRecords); // Nothing ran, so no telemetry was produced.
     }
 
