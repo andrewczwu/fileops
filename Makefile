@@ -24,7 +24,7 @@ DOCKER_RUN = docker run --rm --platform $(DOCKER_PLATFORM) \
 	-e VERSION=$(VERSION) -e RID=$(RID) -e CONFIG=$(CONFIG) -e CI=$${CI:-} \
 	$(BUILD_IMAGE)
 
-.PHONY: help setup restore build lint format test coverage publish package smoke lint-deb clean build-image docker-% ci
+.PHONY: help setup restore build lint format test coverage publish test-native package release-assets smoke lint-deb clean build-image docker-% ci
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -65,8 +65,16 @@ coverage: ## Render coverage report from the last test run (HTML + Markdown summ
 publish: ## Publish a self-contained NativeAOT binary for $(RID)
 	scripts/publish.sh
 
+test-native: ## Run the integration suite against the published native binary
+	FILEOPS_BIN="$(CURDIR)/artifacts/publish/$(RID)/fileops" FILEOPS_TEST_LOG_DIR=$(ARTIFACTS)/logs-native \
+		dotnet test tests/FileOps.Integration.Tests -c $(CONFIG) --no-restore \
+		--logger "trx" --results-directory $(ARTIFACTS)/test-results-native
+
 package: publish ## Build the .deb package from the published binary
 	scripts/package.sh
+
+release-assets: package ## Tarball (binary, licence, man page) and SHA256SUMS next to the .deb
+	scripts/release-assets.sh
 
 smoke: ## Install the .deb in clean Debian and Ubuntu containers and exercise every command
 	scripts/smoke-test.sh

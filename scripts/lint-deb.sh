@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run lintian (Debian's package checker) against the built .deb, failing on errors.
+# Run lintian (Debian's package checker) against the built .deb, failing on warnings and errors.
 # Uses the lintian on PATH when there is one (the toolchain image ships it); otherwise runs it in a
 # container so the host does not need Debian tooling.
 set -euo pipefail
@@ -9,9 +9,11 @@ if ! compgen -G "artifacts/deb/*.deb" >/dev/null; then
   exit 1
 fi
 
+LINTIAN_ARGS=(--fail-on warning --no-tag-display-limit --info)
+
 if command -v lintian >/dev/null 2>&1; then
-  lintian --fail-on error --no-tag-display-limit --info artifacts/deb/*.deb
-  echo "lintian: no errors"
+  lintian "${LINTIAN_ARGS[@]}" artifacts/deb/*.deb
+  echo "lintian: no warnings or errors"
   exit 0
 fi
 
@@ -23,4 +25,5 @@ if ! docker image inspect "${LINT_IMAGE}" >/dev/null 2>&1; then
 fi
 
 docker run --rm --platform "${PLATFORM}" -v "$(pwd)/artifacts/deb:/pkg:ro" "${LINT_IMAGE}" \
-  sh -c 'lintian --fail-on error --no-tag-display-limit --info /pkg/*.deb && echo "lintian: no errors"'
+  lintian "${LINTIAN_ARGS[@]}" /pkg/*.deb
+echo "lintian: no warnings or errors"

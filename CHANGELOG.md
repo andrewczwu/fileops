@@ -7,6 +7,21 @@ has no matching section below.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-11
+
+### Fixed
+
+- The `.deb` now declares its real dependency, `libc6 (>= <glibc floor read from the binary>)`,
+  and lintian runs at warning level; the stale `statically-linked-binary` override is gone.
+- Release tarballs contain the binary, `LICENSE` and the man page under `fileops-<version>/`;
+  `SHA256SUMS` is itself covered by the provenance attestation; packaging timestamps come from
+  the tagged commit (`SOURCE_DATE_EPOCH`).
+- Pre-release tags (`v1.2.0-rc.1`) publish as GitHub pre-releases and may reuse the final
+  version's changelog section.
+- CI could not fail on a found secret (`make lint`), two smoke-test checks could never fail
+  (`!` pipelines are exempt from `set -e`), a pull-request image build could cancel the `main`
+  publish, and runs on `main` could be cancelled by the next push.
+
 ### Added
 
 - Enforced style and formatting conventions: C# style rules promoted to build warnings, plus

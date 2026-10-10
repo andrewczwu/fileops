@@ -1,6 +1,7 @@
 # nfpm (https://nfpm.goreleaser.com) package definition.
-# VERSION (Debian-formatted) and ARCH are supplied by scripts/package.sh, which also stages every
-# file under artifacts/stage/ (nfpm expands ${VAR} in top-level fields only, not in content paths).
+# scripts/package.sh stages every file under artifacts/stage/, substitutes @LIBC6_DEPENDS@ with the
+# glibc floor read from the binary, and supplies VERSION (Debian-formatted) and ARCH; nfpm expands
+# ${VAR} in top-level fields only, not in content paths.
 name: fileops
 arch: ${ARCH}
 platform: linux
@@ -16,7 +17,11 @@ description: |
   Writes are atomic (temp file + rename), destinations are never overwritten
   without --force, exit codes are stable, and every run can emit structured
   JSON logs, OpenTelemetry traces and metrics. Ships as a single native
-  executable with no runtime dependencies beyond glibc.
+  executable whose only runtime dependency is glibc.
+
+# The NativeAOT binary bundles the .NET runtime but links glibc dynamically.
+depends:
+  - "@LIBC6_DEPENDS@"
 
 contents:
   - src: artifacts/stage/fileops
@@ -33,10 +38,6 @@ contents:
       mode: 0644
   - src: artifacts/stage/changelog.gz
     dst: /usr/share/doc/fileops/changelog.gz
-    file_info:
-      mode: 0644
-  - src: packaging/lintian-overrides
-    dst: /usr/share/lintian/overrides/fileops
     file_info:
       mode: 0644
 

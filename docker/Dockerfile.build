@@ -5,6 +5,10 @@
 # The `-aot` variant ships the NativeAOT prerequisites (clang, zlib1g-dev). .NET 10 SDK images are
 # Ubuntu based (glibc 2.39); the install smoke-test matrix (Debian 12/13, Ubuntu 22.04/24.04) is
 # what proves the resulting binary still runs on older glibc.
+#
+# Coupled versions — bump together, or the locked restore fails (see docs/ARCHITECTURE.md,
+# "Reproducible restores"): this SDK tag, `NativeAotToolchainVersion` in Directory.Build.props
+# (the runtime the SDK bundles), and the Microsoft.Extensions.* pins in Directory.Packages.props.
 ARG BASE_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.401-noble-aot
 FROM ${BASE_IMAGE}
 
@@ -13,11 +17,16 @@ FROM ${BASE_IMAGE}
 # round-trip and an apt install on the critical path).
 # Unprivileged user: lets permission-denied tests run (root bypasses file modes).
 ARG NFPM_VERSION=2.47.0
+# sha256 of nfpm_<version>_<arch>.deb from the release's checksums.txt; a tampered download fails the build.
+ARG NFPM_SHA256_AMD64=3f1cf344bd0b57373ca55636a78c08b0491f7293d609a456a9ac3b0b150fda97
+ARG NFPM_SHA256_ARM64=27419eb382695a7942be8ad52259f3ec1854fad001b3ae4baed34ce39a223b97
 RUN apt-get update \
  && apt-get install -y --no-install-recommends make jq ca-certificates curl lintian \
  && rm -rf /var/lib/apt/lists/* \
  && ARCH="$(dpkg --print-architecture)" \
+ && case "${ARCH}" in amd64) SHA="${NFPM_SHA256_AMD64}" ;; arm64) SHA="${NFPM_SHA256_ARM64}" ;; *) echo "no nfpm checksum for ${ARCH}" >&2; exit 1 ;; esac \
  && curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_${ARCH}.deb" -o /tmp/nfpm.deb \
+ && echo "${SHA}  /tmp/nfpm.deb" | sha256sum -c - \
  && dpkg -i /tmp/nfpm.deb && rm /tmp/nfpm.deb \
  && useradd --create-home --uid 1001 --shell /bin/bash builder
 
