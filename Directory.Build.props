@@ -1,0 +1,49 @@
+<Project>
+
+  <!--
+    Repository-wide build settings. Every project under src/ and tests/ inherits these,
+    so individual .csproj files only declare what makes them different.
+  -->
+
+  <PropertyGroup Label="Language">
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Quality gates">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- NuGetAudit defaults to auditing transitive packages in .NET 10; keep it on but only fail on high/critical. -->
+    <NuGetAuditLevel>high</NuGetAuditLevel>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Reproducible builds">
+    <!-- ILCompiler / ILLink pack version; applied by Directory.Build.targets. Matches the runtime bundled with the CI SDK image. -->
+    <NativeAotToolchainVersion>10.0.12</NativeAotToolchainVersion>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true' or '$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true' or '$(GITHUB_ACTIONS)' == 'true'">true</RestoreLockedMode>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Versioning">
+    <!-- CI overrides Version from the git tag (see .github/workflows/release.yml). -->
+    <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
+    <Authors>Andrew Wu</Authors>
+    <Product>fileops</Product>
+    <Copyright>Copyright © 2026 Andrew Wu</Copyright>
+    <RepositoryUrl>https://github.com/andrewczwu/fileops</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Layout">
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FileOps.Cli/FileOps.Cli.csproj" />
+    <Project Path="src/FileOps.Core/FileOps.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FileOps.Core.Tests/FileOps.Core.Tests.csproj" />
+    <Project Path="tests/FileOps.Integration.Tests/FileOps.Integration.Tests.csproj" />
+  </Folder>
+</Solution>

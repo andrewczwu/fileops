@@ -1,0 +1,17 @@
+<Project>
+
+  <!-- Inherit repository-wide settings, then relax rules that do not suit test code. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!--
+      CA1707: underscores in test names are the xunit convention (Does_x_when_y).
+      CA1416: Unix-only file-mode tests are guarded by NonRootFact, which skips on Windows.
+    -->
+    <NoWarn>$(NoWarn);CA1707;CA1416</NoWarn>
+  </PropertyGroup>
+
+</Project>

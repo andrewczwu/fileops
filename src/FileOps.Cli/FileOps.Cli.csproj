@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>fileops</AssemblyName>
+    <RootNamespace>FileOps.Cli</RootNamespace>
+    <Description>Command-line tool for creating, copying, combining and deleting files.</Description>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Native AOT">
+    <!-- The release artefact is a single self-contained native binary (see scripts/publish.sh). -->
+    <PublishAot>true</PublishAot>
+    <!--
+      With PublishAot set, the SDK defaults PublishRuntimeIdentifier to the *host* RID and adds it to
+      the restore graph, which would make packages.lock.json differ between macOS, Linux and CI.
+      Declaring the RID we ship for keeps every restore identical.
+    -->
+    <PublishRuntimeIdentifier>linux-x64</PublishRuntimeIdentifier>
+    <IsAotCompatible>true</IsAotCompatible>
+    <StripSymbols>true</StripSymbols>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <!-- Logging/OTel packages are trim-safe; any IL warning is a real regression, so fail the publish. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FileOps.Core\FileOps.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="OpenTelemetry" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FileOps.Integration.Tests" />
+  </ItemGroup>
+
+</Project>

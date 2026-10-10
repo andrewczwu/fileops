@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Shared scratch-directory helper; linked rather than duplicated. -->
+    <Compile Include="..\FileOps.Core.Tests\Support\TempDirectory.cs" Link="Support\TempDirectory.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Referencing the CLI project copies fileops.dll next to the tests so they can launch it. -->
+    <ProjectReference Include="..\..\src\FileOps.Cli\FileOps.Cli.csproj" />
+  </ItemGroup>
+
+</Project>

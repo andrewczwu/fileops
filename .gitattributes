@@ -1,0 +1,12 @@
+# Normalise line endings so builds and hashes are identical on every platform.
+* text=auto eol=lf
+
+# Shell scripts and git hooks must stay LF and executable.
+*.sh text eol=lf
+.githooks/* text eol=lf
+
+# Binary assets.
+*.png binary
+*.gif binary
+*.deb binary
+*.tar.gz binary
