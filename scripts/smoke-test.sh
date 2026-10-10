@@ -4,7 +4,10 @@
 # Inputs (env): SMOKE_IMAGES (space-separated, default debian:bookworm-slim ubuntu:24.04), DOCKER_PLATFORM
 set -euo pipefail
 
-DEB="$(ls artifacts/deb/*.deb | head -n1)"
+if ! compgen -G "artifacts/deb/*.deb" >/dev/null; then
+  echo "no .deb in artifacts/deb; run 'make package' first" >&2
+  exit 1
+fi
 PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 IMAGES="${SMOKE_IMAGES:-debian:bookworm-slim ubuntu:24.04}"
 

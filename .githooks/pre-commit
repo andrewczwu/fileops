@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Pre-commit guard: block secrets and broken workflow files before they reach history.
-# Enable with `make setup` (sets core.hooksPath to .githooks).
+# Pre-commit guard: block secrets and lint what is staged before it reaches history.
+# Enable with `make setup` (sets core.hooksPath to .githooks). Only locally installed linters run
+# here so the hook stays fast; CI runs the full set from pinned images and is the real gate.
 set -euo pipefail
 
 status=0
+staged="$(git diff --cached --name-only --diff-filter=ACM)"
 
 if command -v gitleaks >/dev/null 2>&1; then
   if ! gitleaks git --pre-commit --staged --no-banner --redact; then
@@ -14,12 +16,16 @@ else
   echo "pre-commit: gitleaks not installed (brew install gitleaks); secret scan skipped." >&2
 fi
 
-if git diff --cached --name-only --diff-filter=ACM | grep -qE '^\.github/workflows/.*\.ya?ml$'; then
-  if command -v actionlint >/dev/null 2>&1; then
-    actionlint || status=1
-  else
-    echo "pre-commit: actionlint not installed (brew install actionlint); workflow lint skipped." >&2
-  fi
+categories=()
+grep -qE '(\.sh$|^\.githooks/)' <<<"${staged}" && categories+=(shell)
+grep -qE '^docker/Dockerfile' <<<"${staged}" && categories+=(docker)
+grep -qE '\.ya?ml$' <<<"${staged}" && categories+=(yaml)
+grep -qE '\.md$' <<<"${staged}" && categories+=(markdown)
+grep -qE '^\.github/workflows/' <<<"${staged}" && categories+=(workflows)
+[[ -n "${staged}" ]] && categories+=(editorconfig)
+
+if [[ ${#categories[@]} -gt 0 ]]; then
+  LINT_SKIP_MISSING=1 scripts/lint.sh "${categories[@]}" || status=1
 fi
 
 exit "${status}"

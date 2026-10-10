@@ -8,7 +8,8 @@
 
 ## Checklist
 
-- [ ] Title follows [Conventional Commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, `ci:`, `build:`, `docs:`, `test:`, `refactor:`)
+- [ ] Title follows [Conventional Commits](https://www.conventionalcommits.org)
+      (`feat:`, `fix:`, `ci:`, `build:`, `docs:`, `test:`, `refactor:`)
 - [ ] Tests added or updated, including telemetry assertions where behaviour changed
 - [ ] `make lint test` passes locally (or `make docker-test`)
 - [ ] Docs updated (README, man page, ADR) if user-visible behaviour changed

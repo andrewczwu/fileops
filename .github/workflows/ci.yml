@@ -1,8 +1,8 @@
 # Continuous integration: every push to main and every pull request.
 #
-#   format ─┐
+#   format ─┐  C# formatting and style (dotnet format + analyzers, warnings are errors)
 #   secrets ├─ (independent, fast feedback)
-#   workflows ┘
+#   lint   ─┘  shell, Dockerfile, YAML, Markdown, editorconfig, workflows, commit messages
 #   test ──► package ──► lint-deb
 #                   └──► smoke (matrix of clean Debian/Ubuntu containers)
 #   diagnose (only on failure; AI-assisted summary from the captured telemetry)
@@ -65,8 +65,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  workflows:
-    name: Workflow lint
+  lint:
+    # Everything that is not C#: shell (shellcheck, shfmt), Dockerfiles (hadolint), YAML, Markdown,
+    # editorconfig conformance, workflow syntax (actionlint) and Conventional Commits. Each tool runs
+    # from the pinned image named in scripts/lint.sh, so `make lint` locally checks the same rules.
+    name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -75,12 +78,23 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 0 # commit-message check needs the base branch
           persist-credentials: false
+      - name: Lint everything that is not C#
+        env:
+          LINT_PREFER_DOCKER: "1"
+        run: scripts/lint.sh shell docker yaml markdown editorconfig
       - name: actionlint
         if: ${{ !env.ACT }}
         run: |
           bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
           ./actionlint -color
+      - name: Conventional Commits
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: scripts/ci/check-commits.sh "$BASE..$HEAD"
       - name: zizmor
         if: ${{ !env.ACT }}
         uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4

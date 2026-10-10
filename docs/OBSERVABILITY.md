@@ -6,7 +6,7 @@ and a failure can be diagnosed from the log stream alone. This document is the c
 ## Channels
 
 | Channel | Where | Enabled by |
-|---|---|---|
+| --- | --- | --- |
 | Logs | stderr, text or NDJSON | `--log-level` / `FILEOPS_LOG_LEVEL` (default `None`), `--log-format` / `FILEOPS_LOG_FORMAT` |
 | Logs, traces, metrics | OTLP | `OTEL_EXPORTER_OTLP_ENDPOINT` (standard `OTEL_*` variables honoured) |
 | User-facing result | stderr, last line, `fileops: <message>` | always, on failure only |
@@ -20,7 +20,7 @@ Every record carries a stable `EventId`. Ranges: 1xxx lifecycle, 2xxx create, 3x
 4xxx combine, 5xxx delete. Defined in `src/FileOps.Core/Telemetry/LogEvents.cs`.
 
 | Id | Level | Message template | Structured fields |
-|---:|---|---|---|
+| ---: | --- | --- | --- |
 | 1000 | Debug | `Starting {Operation} on {Path}` | Operation, Path |
 | 1001 | Information | `{Operation} completed on {Path}: {Bytes} bytes in {DurationMs} ms` | Operation, Path, Bytes, DurationMs |
 | 1002 | Error | `{Operation} failed on {Path} with exit code {ExitCode}: {Reason}` | Operation, Path, ExitCode, Reason (+ exception) |
@@ -43,7 +43,7 @@ Invariants (enforced by `TelemetryContractTests`):
 One span per operation from `ActivitySource` `FileOps`, named `fileops.<operation>`.
 
 | Tag | Meaning |
-|---|---|
+| --- | --- |
 | `fileops.operation` | `create` / `copy` / `combine` / `delete` |
 | `file.path` | the file produced or removed |
 | `file.source`, `file.source2`, `file.destination` | inputs and output for copy/combine |
@@ -60,7 +60,7 @@ When a span is active, log records include `TraceId` and `SpanId` scopes for cor
 Meter `FileOps`:
 
 | Instrument | Type | Unit | Tags |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `fileops.operations` | counter | `{operation}` | `operation`, `outcome` (`success` or lower-case exit code name) |
 | `fileops.operation.duration` | histogram | `s` | same |
 | `fileops.bytes` | counter | `By` | same; only recorded when bytes > 0 |

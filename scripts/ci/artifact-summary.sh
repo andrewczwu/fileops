@@ -3,7 +3,10 @@
 set -euo pipefail
 
 BIN="artifacts/publish/${RID:-linux-x64}/fileops"
-DEB="$(ls artifacts/deb/*.deb 2>/dev/null | head -n1 || true)"
+DEB=""
+for candidate in artifacts/deb/*.deb; do
+  [[ -f "${candidate}" ]] && DEB="${candidate}" && break
+done
 
 human() { numfmt --to=iec --suffix=B "$1" 2>/dev/null || echo "$1 B"; }
 

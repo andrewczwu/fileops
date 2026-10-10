@@ -10,7 +10,7 @@ and metrics that the test suite and CI treat as evidence.
 
 Ships as a single native Linux executable (no runtime to install), packaged as a `.deb`.
 
-```
+```text
 $ fileops create notes.txt --text "hello"
 $ fileops copy notes.txt backup.txt
 $ fileops combine notes.txt backup.txt both.txt
@@ -44,7 +44,7 @@ Remove with `sudo apt remove fileops`.
 
 ## Usage
 
-```
+```text
 fileops [--log-level LEVEL] [--log-format text|json] [-v] <command> [args]
 
   create  <path> [--text TEXT] [--force]      Create a file, empty or with text (UTF-8, as given)
@@ -63,7 +63,7 @@ Rules that hold for every command:
 - Directories are refused; copying a file onto itself is refused.
 
 | Exit code | Meaning |
-|---:|---|
+| ---: | --- |
 | 0 | success |
 | 1 | usage error (bad arguments, same source and destination, path is a directory) |
 | 2 | an input file or directory does not exist |
@@ -112,7 +112,7 @@ make help                 # everything else
 Three layers, all run by `make test` / CI:
 
 | Layer | What runs | What it proves |
-|---|---|---|
+| --- | --- | --- |
 | Unit (`tests/FileOps.Core.Tests`) | the library in-process with a `FakeLogger`, `ActivityListener` and `MetricCollector` attached | each operation's file-system behaviour, atomicity, error→exit-code mapping, **and** that the right log events, span status/tags and metric measurements were emitted |
 | Integration (`tests/FileOps.Integration.Tests`) | the real executable as a child process, with JSON logging on | argument parsing, exit codes, stdout/stderr discipline, log schema, and that logged facts (bytes, exit code, reason) match what actually happened |
 | Package smoke (`scripts/smoke-test.sh`) | the installed `.deb` in pristine `debian:12`, `debian:13`, `ubuntu:22.04`, `ubuntu:24.04` containers | it installs, runs, honours exit codes, logs, ships a man page, and removes cleanly |
@@ -125,11 +125,12 @@ into the job summary, and uploaded; a red build can be diagnosed from that file 
 
 ## Pipeline
 
-```
+```text
 PR / push to main ──► ci.yml
    format        dotnet format + analyzers (warnings are errors)        ─┐
    secrets       gitleaks over full history                              ├─ parallel
-   workflows     actionlint + zizmor                                    ─┘
+   lint          shellcheck, shfmt, hadolint, yamllint, markdownlint,  ─┘
+                 editorconfig-checker, actionlint, zizmor, Conventional Commits
    test          unit + integration, coverage + telemetry → job summary
    package       NativeAOT publish → integration tests vs native binary → .deb
    lint-deb      lintian --fail-on error
@@ -168,7 +169,7 @@ The release workflow does the rest. CI builds use `0.0.0-ci.N`; local builds use
 
 ## Repository layout
 
-```
+```text
 src/FileOps.Core/        operations, atomic writer, telemetry contract (no CLI code)
 src/FileOps.Cli/         System.CommandLine front end, host wiring, exit codes
 tests/                   unit and integration tests

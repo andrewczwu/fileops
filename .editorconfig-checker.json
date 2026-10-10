@@ -1,0 +1,12 @@
+{
+  "Exclude": [
+    "^artifacts/",
+    "^\\.nuget/",
+    "packages\\.lock\\.json$",
+    "^LICENSE$",
+    "\\.1$"
+  ],
+  "Disable": {
+    "MaxLineLength": true
+  }
+}
