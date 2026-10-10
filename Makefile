@@ -24,8 +24,7 @@ DOCKER_RUN = docker run --rm --platform $(DOCKER_PLATFORM) \
 	-e VERSION=$(VERSION) -e RID=$(RID) -e CONFIG=$(CONFIG) -e CI=$${CI:-} \
 	$(BUILD_IMAGE)
 
-.PHONY: help setup restore build lint format test coverage publish package smoke lint-deb clean \
-        build-image docker-% ci
+.PHONY: help setup restore build lint format test coverage publish package smoke lint-deb clean build-image docker-% ci
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -33,7 +32,9 @@ help: ## Show this help
 setup: ## One-time developer setup: git hooks and local tools
 	git config core.hooksPath .githooks
 	dotnet tool restore
-	@echo "Hooks installed. Install gitleaks and actionlint for the pre-commit hook: brew install gitleaks actionlint"
+	@echo "Hooks installed (pre-commit: lint staged files and scan for secrets; commit-msg: Conventional Commits)."
+	@echo "Linters run from Docker images when not installed; for a faster local loop:"
+	@echo "  brew install gitleaks actionlint zizmor shellcheck shfmt hadolint yamllint editorconfig-checker && npm i -g markdownlint-cli2"
 
 restore: ## Restore packages (locked mode in CI so the lock files are authoritative)
 	dotnet restore $(if $(CI),--locked-mode,)
@@ -41,11 +42,10 @@ restore: ## Restore packages (locked mode in CI so the lock files are authoritat
 build: restore ## Build all projects
 	dotnet build --no-restore -c $(CONFIG) -p:Version=$(VERSION)
 
-lint: restore ## Formatting, analyzers, workflow and secret scanning
+lint: restore ## C# format/style, shell, Dockerfile, YAML, Markdown, editorconfig, workflows, commit messages, secrets
 	dotnet format --no-restore --verify-no-changes
-	@command -v actionlint >/dev/null && actionlint || echo "actionlint not installed; skipping"
-	@command -v zizmor >/dev/null && zizmor .github/workflows || echo "zizmor not installed; skipping"
-	@command -v gitleaks >/dev/null && gitleaks git --no-banner --redact . || echo "gitleaks not installed; skipping"
+	scripts/lint.sh
+	@command -v gitleaks >/dev/null && gitleaks git --no-banner --redact . || echo "gitleaks not installed; CI scans the full history"
 
 format: ## Apply formatting fixes
 	dotnet format

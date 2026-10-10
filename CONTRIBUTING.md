@@ -12,6 +12,27 @@ Requirements: the .NET 10 SDK (`global.json` pins the feature band), and Docker 
 the Linux native binary or run the pipeline locally. `brew install gitleaks actionlint zizmor nfpm act`
 gives you every tool the hooks and `make lint` use.
 
+## Formatting and style
+
+Conventions are enforced, not suggested: every check below fails the build in CI and most run in the
+pre-commit hook on the files you staged.
+
+| What | Tool | Rules |
+| --- | --- | --- |
+| C# formatting, style, naming, analyzers | `dotnet format --verify-no-changes`, `EnforceCodeStyleInBuild`, warnings as errors | `.editorconfig` (style rules promoted to warnings), `Directory.Build.props` |
+| Shell scripts and hooks | shellcheck, shfmt | `.shellcheckrc`, `[*.sh]` in `.editorconfig` |
+| Dockerfiles | hadolint | `.hadolint.yaml` |
+| YAML | yamllint | `.yamllint.yml` |
+| Markdown | markdownlint-cli2 | `.markdownlint-cli2.yaml` |
+| Whitespace, newlines, indentation (all files) | editorconfig-checker | `.editorconfig`, `.editorconfig-checker.json` |
+| GitHub Actions workflows | actionlint, zizmor | — |
+| Commit messages | `scripts/ci/check-commits.sh` (Conventional Commits) | `commit-msg` hook, CI on pull requests |
+| Secrets | gitleaks | `.gitleaks.toml` |
+
+`make lint` runs all of it. `scripts/lint.sh` uses a locally installed tool when one is on `PATH` and
+the pinned Docker image otherwise, so laptops and CI check identical versions. `dotnet format` fixes
+C# issues and `shfmt -w` fixes shell formatting; the other tools report only.
+
 ## Workflow
 
 1. Branch from `main`: `git switch -c feat/short-description`.
@@ -37,7 +58,7 @@ code scanning) are skipped under `act` and marked as such in the workflow.
 
 ## Project layout
 
-```
+```text
 src/FileOps.Core        the operations, telemetry and atomic-write logic (no CLI concerns)
 src/FileOps.Cli         System.CommandLine front end, host wiring, exit-code mapping
 tests/FileOps.Core.Tests          unit tests: file-system outcomes + logs/spans/metrics

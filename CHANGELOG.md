@@ -7,6 +7,13 @@ has no matching section below.
 
 ## [Unreleased]
 
+### Added
+
+- Enforced style and formatting conventions: C# style rules promoted to build warnings, plus
+  shellcheck, shfmt, hadolint, yamllint, markdownlint, editorconfig-checker and a Conventional
+  Commits check, all mandatory in CI (`Lint` job) and run by the git hooks on staged files.
+- Integration test proving `combine` is byte-transparent for binary input.
+
 ## [1.0.0] - 2026-10-10
 
 ### Added

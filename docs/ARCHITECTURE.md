@@ -3,7 +3,7 @@
 A small tool, structured so that it could grow: the file logic, the command-line surface, the
 telemetry and the delivery pipeline are separate concerns with explicit contracts between them.
 
-```
+```text
                       ┌──────────────────────────────┐
  argv ──► FileOps.Cli │ System.CommandLine parse     │
                       │ GlobalOptions (log level/fmt)│
@@ -58,7 +58,7 @@ whatever exporters it wants.
 ## Tests
 
 | Project | Runs against | Proves |
-|---|---|---|
+| --- | --- | --- |
 | `FileOps.Core.Tests` | the library in-process | behaviour of each operation, atomicity, error mapping, and the telemetry emitted for every outcome |
 | `FileOps.Integration.Tests` | the real executable (managed build by default, native binary via `FILEOPS_BIN`) | argument parsing, exit codes, stdout/stderr discipline, JSON log schema, and that logged facts match reality |
 
@@ -67,7 +67,7 @@ NativeAOT binary, and (as a shell script) against the installed `.deb` in clean 
 
 ## Delivery
 
-```
+```text
 docker/Dockerfile.build ─► ghcr.io/…/fileops-build   (weekly + on change)
                                       │
    PR / push ─► ci.yml:  format · secrets · workflows · test ─► package ─► lint-deb · smoke×4

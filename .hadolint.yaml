@@ -1,0 +1,10 @@
+# hadolint configuration (https://github.com/hadolint/hadolint#configure)
+failure-threshold: warning
+ignored:
+  # DL3008: "pin versions in apt-get install". The base image is pinned by exact SDK version and the
+  # package list is small; pinning apt versions would make the image unbuildable as soon as Ubuntu
+  # rotates a security update. The weekly rebuild exists precisely to pick those up.
+  - DL3008
+trustedRegistries:
+  - mcr.microsoft.com
+  - docker.io
