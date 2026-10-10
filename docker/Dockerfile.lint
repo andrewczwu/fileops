@@ -1,0 +1,5 @@
+# Package-lint image: Debian tooling for validating the .deb (lintian, dpkg-deb, file).
+FROM debian:bookworm-slim
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends lintian file \
+ && rm -rf /var/lib/apt/lists/*
