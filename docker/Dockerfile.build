@@ -1,19 +1,18 @@
 # Toolchain image used by CI and by `make docker-*` so local and pipeline builds are identical.
 # Published to ghcr.io/andrewczwu/fileops-build by .github/workflows/build-image.yml.
 #
-# Debian bookworm (glibc 2.36) rather than the SDK's default Ubuntu base: NativeAOT links against
-# the build machine's glibc, so building on the oldest supported release keeps the binary runnable
-# on every newer Debian and Ubuntu.
 # Exact SDK version: packages.lock.json is only reproducible when every restore uses the same SDK.
-ARG BASE_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.401-bookworm-slim
+# The `-aot` variant ships the NativeAOT prerequisites (clang, zlib1g-dev). .NET 10 SDK images are
+# Ubuntu based (glibc 2.39); the install smoke-test matrix (Debian 12/13, Ubuntu 22.04/24.04) is
+# what proves the resulting binary still runs on older glibc.
+ARG BASE_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.401-noble-aot
 FROM ${BASE_IMAGE}
 
-# clang + zlib headers: required by the NativeAOT linker.
 # make: the repository's task runner. jq: telemetry summaries. nfpm: builds the .deb without Debian tooling.
 # Unprivileged user: lets permission-denied tests run (root bypasses file modes).
 ARG NFPM_VERSION=2.47.0
 RUN apt-get update \
- && apt-get install -y --no-install-recommends clang zlib1g-dev make jq ca-certificates curl \
+ && apt-get install -y --no-install-recommends make jq ca-certificates curl \
  && rm -rf /var/lib/apt/lists/* \
  && ARCH="$(dpkg --print-architecture)" \
  && curl -fsSL "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_${ARCH}.deb" -o /tmp/nfpm.deb \
