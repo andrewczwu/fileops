@@ -14,6 +14,12 @@ has no matching section below.
   Commits check, all mandatory in CI (`Lint` job) and run by the git hooks on staged files.
 - Integration test proving `combine` is byte-transparent for binary input.
 
+### Changed
+
+- CI critical path shortened: test, NativeAOT publish, native-binary tests, `.deb` build and
+  lintian now run in one toolchain-container job (one image pull instead of three), the formatter
+  runs on the runner's preinstalled SDK, and lintian ships in the toolchain image.
+
 ## [1.0.0] - 2026-10-10
 
 ### Added

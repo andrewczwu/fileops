@@ -127,13 +127,13 @@ into the job summary, and uploaded; a red build can be diagnosed from that file 
 
 ```text
 PR / push to main ──► ci.yml
-   format        dotnet format + analyzers (warnings are errors)        ─┐
-   secrets       gitleaks over full history                              ├─ parallel
-   lint          shellcheck, shfmt, hadolint, yamllint, markdownlint,  ─┘
+   format        dotnet format + analyzers (warnings are errors), host SDK   ─┐
+   secrets       gitleaks over full history                                   ├─ parallel
+   lint          shellcheck, shfmt, hadolint, yamllint, markdownlint,        ─┘
                  editorconfig-checker, actionlint, zizmor, Conventional Commits
-   test          unit + integration, coverage + telemetry → job summary
-   package       NativeAOT publish → integration tests vs native binary → .deb
-   lint-deb      lintian --fail-on error
+   build         one toolchain-container job: unit + integration tests (coverage + telemetry
+                 → job summary) → NativeAOT publish → integration tests vs native binary
+                 → .deb → lintian
    smoke ×4      apt install in clean containers, exercise, remove
    diagnose      (on failure, opt-in) AI summary from the captured telemetry
 

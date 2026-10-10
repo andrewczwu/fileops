@@ -54,12 +54,12 @@ jobs:
       - name: Publish and package
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          SOURCE_DATE_EPOCH: ${{ github.event.head_commit.timestamp && '' }}
         run: |
           make publish
           FILEOPS_BIN="$PWD/artifacts/publish/linux-x64/fileops" FILEOPS_TEST_LOG_DIR=artifacts/logs-native \
-            dotnet test tests/FileOps.Integration.Tests -c Release
+            dotnet test tests/FileOps.Integration.Tests -c Release --no-restore
           make package
+          scripts/lint-deb.sh
           tar -C artifacts/publish/linux-x64 -czf "artifacts/deb/fileops_${VERSION}_linux-x64.tar.gz" fileops
           (cd artifacts/deb && sha256sum ./*.deb ./*.tar.gz > SHA256SUMS && cat SHA256SUMS)
       - name: Artefact summary
@@ -87,11 +87,6 @@ jobs:
         with:
           name: release-assets
           path: artifacts/deb
-      - name: lintian
-        if: matrix.image == 'debian:bookworm-slim'
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends lintian
-          scripts/lint-deb.sh
       - name: Install smoke test
         env:
           SMOKE_IMAGES: ${{ matrix.image }}

@@ -70,7 +70,7 @@ NativeAOT binary, and (as a shell script) against the installed `.deb` in clean 
 ```text
 docker/Dockerfile.build ─► ghcr.io/…/fileops-build   (weekly + on change)
                                       │
-   PR / push ─► ci.yml:  format · secrets · workflows · test ─► package ─► lint-deb · smoke×4
+   PR / push ─► ci.yml:  format · secrets · lint · build (test → publish → native tests → .deb → lintian) ─► smoke×4
                                       │
    tag vX.Y.Z ─► release.yml: build ─► verify×4 ─► attest + GitHub release (.deb, .tar.gz, SHA256SUMS)
 ```
@@ -78,6 +78,24 @@ docker/Dockerfile.build ─► ghcr.io/…/fileops-build   (weekly + on change)
 Every multi-step CI task is a script under `scripts/` invoked through the `Makefile`, so
 `make test`, `make package`, `make smoke` locally are the same commands the pipeline runs, and
 `act` can execute the workflows offline against the same toolchain image.
+
+### Pipeline timing
+
+The job graph is shaped by one measurement: pulling the 1 GB toolchain image costs ~25 s per
+container job on a hosted runner, and the work inside each job is smaller than that. The first
+layout had three container jobs in a chain (`test → package → lintian`), so two image pulls, an
+artifact round-trip and an `apt-get install lintian` sat on the critical path.
+
+| Layout | Critical path | Wall-clock |
+| --- | --- | --- |
+| `test → package → lintian` (three container jobs) | 53 s + 60 s + 39 s | 2 m 40 s |
+| `build` (one container job) `→ smoke` | see the latest run summary | — |
+
+Rules that follow from it: anything needing the toolchain image runs in the single `build` job;
+`format` uses the SDK preinstalled on the runner (the same 10.0.401 the image pins) rather than the
+image; `lintian` ships in the image instead of being installed per run. The remaining cost inside
+`build` is real work — NativeAOT compilation (~20 s) and the test suites (~15 s) — plus the one
+unavoidable image pull.
 
 ## Reproducible restores
 
