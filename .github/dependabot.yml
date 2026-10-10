@@ -1,10 +1,14 @@
 # Keeps SHA-pinned actions, NuGet packages and the base image current via weekly grouped PRs.
+# Each ecosystem waits seven days after a version is published before proposing it, so a release
+# that turns out to be compromised or broken has time to be yanked before it reaches this repo.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns: ["*"]
@@ -13,6 +17,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       dotnet:
         patterns: ["Microsoft.*", "System.*"]
@@ -25,3 +31,5 @@ updates:
     directory: /docker
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
