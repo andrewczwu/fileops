@@ -36,5 +36,9 @@ failure, and make the pipeline impossible to exercise without pushing.
   locally built image without network access.
 - Running jobs as the image's unprivileged user (`--user 1001`) is needed for permission tests,
   which costs a little setup (`DOTNET_CLI_HOME`, explicit `NUGET_PACKAGES`).
+- Each container job pays ~25 s to pull the image, which outweighs the work inside most jobs. The
+  pipeline therefore keeps a single container job for everything that needs the toolchain, and
+  runs the formatter on the host SDK that the runner image already ships (see "Pipeline timing"
+  in ARCHITECTURE.md). Finer-grained jobs would read better in the UI but would be slower.
 - `act` cannot run everything (OIDC, artifact API, code scanning), so some jobs are only proven on
   GitHub.
