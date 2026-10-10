@@ -10,6 +10,25 @@ integration, 0 skipped, SDK 10.0.301). The v1.0.0 assets were downloaded, `SHA25
 `.deb` and tarball verified with
 `gh attestation verify --signer-workflow andrewczwu/fileops/.github/workflows/release.yml`.
 
+## Status after implementation (2026-10-10)
+
+Most findings below have since been fixed on `main`; the body of this review is left unchanged as a
+point-in-time record. The test count is now 86 (49 unit, 37 integration) where the body says 74.
+
+Fixed on `main`:
+
+- F1-F14, F17, F18, F19, F22 and F24, and most of F15 and F16.
+- The platform settings the scorecard asked for: the `v*` tag ruleset, immutable releases and CodeQL.
+
+Left open by decision:
+
+- F15 remainder: the base image is referenced by tag and apt packages are unpinned.
+- F16: no automated coupling check beyond the comment in the Dockerfile.
+- F20: unverifiable on a solo repository.
+- F21: the smoke image list is still kept in four places.
+- F23: history, which cannot be rewritten.
+- F25: linter image tags sit outside Dependabot, as stated in `scripts/lint.sh`.
+
 ## 1. Executive summary
 
 Verdict: well above the norm for a CLI of this size, and above most production repositories on supply-chain

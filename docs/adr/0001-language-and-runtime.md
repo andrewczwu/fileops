@@ -15,8 +15,9 @@ C# 14 on .NET 10, compiled with NativeAOT to a self-contained `linux-x64` ELF bi
 ## Reasons
 
 - `System.IO` and `System.Diagnostics` cover file operations, tracing and metrics with no third
-  party code; the only runtime packages are the logging abstractions, System.CommandLine and the
-  OpenTelemetry exporter.
+  party code; the only runtime packages are
+  Microsoft.Extensions.{DependencyInjection,Diagnostics,Logging,Logging.Console}, System.CommandLine
+  and OpenTelemetry (SDK and OTLP exporter).
 - NativeAOT yields a ~10 MB binary that depends only on glibc, starts in milliseconds and needs no
   runtime on the target, satisfying "single portable executable" without static-linking debates.
 - First-class testing (`xunit`, `FakeLogger`, `MetricCollector`) makes the telemetry-as-evidence
