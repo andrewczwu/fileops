@@ -26,18 +26,25 @@ $ echo $?
 Download the `.deb` from the [latest release](https://github.com/andrewczwu/fileops/releases/latest):
 
 ```sh
-curl -LO https://github.com/andrewczwu/fileops/releases/latest/download/fileops_1.0.0_amd64.deb
-sudo apt install ./fileops_1.0.0_amd64.deb
+VERSION=1.0.0   # see the releases page for the current version
+curl -LO "https://github.com/andrewczwu/fileops/releases/download/v${VERSION}/fileops_${VERSION}_amd64.deb"
+sudo apt install "./fileops_${VERSION}_amd64.deb"
 fileops --version
 man fileops
 ```
 
-Works on Debian 12 and 13 and Ubuntu 22.04 and 24.04 (x86-64); the only dependency is glibc.
-Every release also ships a bare `fileops_<version>_linux-x64.tar.gz`, a `SHA256SUMS` file, and a
-[SLSA build provenance attestation](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations):
+Works on Debian 12 and 13 and Ubuntu 22.04 and 24.04 (x86-64). The package's only dependency is
+`libc6`; the minimum version is read from the binary at build time (currently `>= 2.34`).
+
+Every release also ships `fileops_<version>_linux-x64.tar.gz` (the binary, `LICENSE` and the man
+page under `fileops-<version>/`), a `SHA256SUMS` file, and a
+[SLSA build provenance attestation](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations)
+covering all three. Verify that an asset was built by this repository's release workflow, not
+merely signed by someone with access to the repository:
 
 ```sh
-gh attestation verify fileops_1.0.0_amd64.deb --owner andrewczwu
+gh attestation verify "fileops_${VERSION}_amd64.deb" --owner andrewczwu \
+  --signer-workflow andrewczwu/fileops/.github/workflows/release.yml
 ```
 
 Remove with `sudo apt remove fileops`.
@@ -55,10 +62,13 @@ fileops [--log-level LEVEL] [--log-format text|json] [-v] <command> [args]
 
 Rules that hold for every command:
 
-- An existing destination is **never overwritten** unless `--force` is given.
+- An existing destination is **never overwritten** unless `--force` is given; when it is, the
+  replacement keeps the existing file's permission bits.
 - Writes are **atomic**: content goes to a temporary file beside the destination and is renamed
-  into place, so an interrupted run never leaves a partial file. A consequence: `combine a b a --force`
-  safely appends `b` to `a`.
+  into place, so the destination is never left partially written. A consequence:
+  `combine a b a --force` safely appends `b` to `a`. (If the process is killed by a signal mid-write,
+  a `.name.<id>.tmp` sibling can remain; the destination itself is untouched.)
+- `copy` preserves the source's permission bits, applied before any content is written.
 - **stdout is reserved for results** (only `--help` and `--version` use it); diagnostics go to stderr.
 - Directories are refused; copying a file onto itself is refused.
 
@@ -115,13 +125,14 @@ Three layers, all run by `make test` / CI:
 | --- | --- | --- |
 | Unit (`tests/FileOps.Core.Tests`) | the library in-process with a `FakeLogger`, `ActivityListener` and `MetricCollector` attached | each operation's file-system behaviour, atomicity, error→exit-code mapping, **and** that the right log events, span status/tags and metric measurements were emitted |
 | Integration (`tests/FileOps.Integration.Tests`) | the real executable as a child process, with JSON logging on | argument parsing, exit codes, stdout/stderr discipline, log schema, and that logged facts (bytes, exit code, reason) match what actually happened |
-| Package smoke (`scripts/smoke-test.sh`) | the installed `.deb` in pristine `debian:12`, `debian:13`, `ubuntu:22.04`, `ubuntu:24.04` containers | it installs, runs, honours exit codes, logs, ships a man page, and removes cleanly |
+| Package smoke (`scripts/smoke-test.sh`) | the installed `.deb` in pristine `debian:bookworm-slim` (12), `debian:trixie-slim` (13), `ubuntu:22.04`, `ubuntu:24.04` containers | it installs, runs, honours exit codes, logs, ships a man page, and removes cleanly |
 
-CI runs the integration suite twice more: against the NativeAOT binary (`FILEOPS_BIN=…`) and,
+CI runs the integration suite twice more: against the NativeAOT binary (`make test-native`) and,
 via the smoke script, against the installed package — so the artefact that ships is the artefact
 that was tested. Every CLI invocation's log stream is captured to `cli-runs.ndjson`, summarised
-into the job summary, and uploaded; a red build can be diagnosed from that file without a re-run
-(optionally by an AI assistant: see the `diagnose` job in `ci.yml`).
+into the job summary, and uploaded; a red build can be diagnosed from that file without a re-run.
+The `diagnose` job in `ci.yml` hands that file to an AI assistant on failing same-repository pull
+requests; it is dormant until an `ANTHROPIC_API_KEY` repository secret exists.
 
 ## Pipeline
 
@@ -135,10 +146,11 @@ PR / push to main ──► ci.yml
                  → job summary) → NativeAOT publish → integration tests vs native binary
                  → .deb → lintian
    smoke ×4      apt install in clean containers, exercise, remove
-   diagnose      (on failure, opt-in) AI summary from the captured telemetry
+   diagnose      (on failure, same-repo PRs, dormant without a secret) AI summary from the telemetry
 
 tag vX.Y.Z ──► release.yml
    build → verify ×4 → provenance attestation → GitHub release (.deb, .tar.gz, SHA256SUMS)
+   (a pre-release suffix such as v1.2.0-rc.1 publishes a GitHub pre-release)
 
 docker/Dockerfile.build ──► build-image.yml (on change + weekly) ──► ghcr.io/andrewczwu/fileops-build
 ```
@@ -146,11 +158,12 @@ docker/Dockerfile.build ──► build-image.yml (on change + weekly) ──►
 Design choices worth knowing (details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
 [docs/adr](docs/adr)):
 
-- **Same toolchain everywhere.** Build/test/package jobs run in a pinned container image;
-  `make docker-test` runs the identical thing locally.
+- **One toolchain for everything that builds.** Test, publish, package and lintian run in a pinned
+  container image as an unprivileged user; `make docker-test` runs the identical thing locally. The
+  formatter and the linters run on the host because they need no toolchain.
 - **Scripts, not YAML.** Every multi-step job calls a script under `scripts/` through the
   Makefile, so pipeline logic is reviewable and runnable without pushing.
-- **Runnable offline.** `act -j test` executes the real workflow locally (`.actrc` has the defaults).
+- **Runnable offline.** `act -j build` executes the real workflow locally (`.actrc` has the defaults).
 - **Supply-chain hygiene.** Actions pinned to commit SHAs with Dependabot updates, least-privilege
   `permissions`, `timeout-minutes` and `concurrency` on every job, locked NuGet restores with
   `NuGetAudit`, secret scanning in a pre-commit hook and in CI, SLSA provenance on releases.
@@ -165,7 +178,22 @@ Design choices worth knowing (details in [docs/ARCHITECTURE.md](docs/ARCHITECTUR
 git tag -a v1.2.3 -m "fileops 1.2.3" && git push origin v1.2.3
 ```
 
-The release workflow does the rest. CI builds use `0.0.0-ci.N`; local builds use `0.0.0-dev`.
+The release workflow does the rest. A tag with a pre-release suffix (`v1.2.3-rc.1`) publishes a
+GitHub pre-release and may reuse the `[1.2.3]` changelog section, which is how the release path is
+exercised before a final version. CI builds use `0.0.0-ci.N`; local builds use `0.0.0-dev`.
+
+## Non-goals
+
+Choices made on purpose for a single-maintainer tool with one requested target; the reasoning is in
+[docs/reviews/2026-10-ci-cd-review.md](docs/reviews/2026-10-ci-cd-review.md), section 5:
+
+- no apt repository, RPM, Homebrew tap, container image or `curl | sh` installer — `apt install ./file.deb`
+  from a verified release is the supported path;
+- no arm64 or musl builds — x86-64 Debian/Ubuntu is the brief;
+- no merge queue, reusable workflows, SLSA Build L3 builder or SBOM — each adds machinery without a
+  consumer here; provenance attestations give Build L2 today;
+- no coverage gate, mutation testing or fuzzing — 84 deterministic tests on a tool that parses only
+  its own arguments.
 
 ## Repository layout
 
@@ -173,7 +201,7 @@ The release workflow does the rest. CI builds use `0.0.0-ci.N`; local builds use
 src/FileOps.Core/        operations, atomic writer, telemetry contract (no CLI code)
 src/FileOps.Cli/         System.CommandLine front end, host wiring, exit codes
 tests/                   unit and integration tests
-packaging/               nfpm spec, man page, Debian copyright, lintian overrides
+packaging/               nfpm spec, man page, Debian copyright
 scripts/                 build, publish, package, smoke-test, CI helpers
 docker/                  toolchain image
 docs/                    architecture, observability contract, decision records

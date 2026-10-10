@@ -31,5 +31,6 @@ C# 14 on .NET 10, compiled with NativeAOT to a self-contained `linux-x64` ELF bi
 - The binary links against the build machine's glibc. Microsoft publishes no Debian-based SDK image
   for .NET 10, so the toolchain image is the Ubuntu 24.04 `-aot` variant (glibc 2.39) and the install
   smoke test on Debian 12/13 and Ubuntu 22.04/24.04 is what proves the binary runs on older glibc.
-- The `.deb` ships a statically linked runtime, which lintian flags; the override is documented in
-  `packaging/lintian-overrides`.
+- The binary bundles the .NET runtime but links glibc dynamically, so the `.deb` declares
+  `Depends: libc6 (>= <floor>)` with the floor read from the binary's versioned symbols at package
+  time (`scripts/package.sh`), and lintian runs at warning level with no overrides.
