@@ -8,9 +8,11 @@ make setup          # installs git hooks (gitleaks, actionlint) and local tools
 make test           # build + unit + integration tests
 ```
 
-Requirements: the .NET 10 SDK (`global.json` pins the feature band), and Docker if you want to build
-the Linux native binary or run the pipeline locally. `brew install gitleaks actionlint zizmor nfpm act`
-gives you every tool the hooks and `make lint` use.
+Requirements: the .NET 10 SDK (`global.json` pins the feature band), GNU Make 3.82 or newer (macOS
+ships 3.81; `brew install make` and use `gmake`, or put its `gnubin` directory first on `PATH`), and
+Docker if you want to build the Linux native binary or run the pipeline locally.
+`brew install make gitleaks actionlint zizmor nfpm act` gives you every tool the hooks and
+`make lint` use.
 
 ## Formatting and style
 
