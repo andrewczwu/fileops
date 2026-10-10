@@ -89,13 +89,18 @@ artifact round-trip and an `apt-get install lintian` sat on the critical path.
 | Layout | Critical path | Wall-clock |
 | --- | --- | --- |
 | `test → package → lintian` (three container jobs) | 53 s + 60 s + 39 s | 2 m 40 s |
-| `build` (one container job) `→ smoke` | see the latest run summary | — |
+| `build` (one container job) `→ smoke` | 82 s + 15 s | 1 m 42 s |
+
+Inside the consolidated `build` job: image pull 19 s, build + tests 21 s, NativeAOT publish 22 s,
+native-binary tests 3 s, `.deb` 2 s, lintian 3 s (it took 19 s on the host runner plus a 15 s
+`apt-get install`; running it from the image is both cheaper and version-pinned).
 
 Rules that follow from it: anything needing the toolchain image runs in the single `build` job;
 `format` uses the SDK preinstalled on the runner (the same 10.0.401 the image pins) rather than the
-image; `lintian` ships in the image instead of being installed per run. The remaining cost inside
-`build` is real work — NativeAOT compilation (~20 s) and the test suites (~15 s) — plus the one
-unavoidable image pull.
+image; `lintian` ships in the image instead of being installed per run. What remains on the
+critical path is real work — NativeAOT compilation and the test suites — plus one image pull.
+Further gains would need a smaller base image or caching the AOT object files, both of which cost
+more in maintenance than the seconds they save at this size.
 
 ## Reproducible restores
 
