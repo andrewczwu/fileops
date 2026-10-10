@@ -25,7 +25,8 @@ fileops copy a.txt c.txt
 fileops combine c.txt b.txt out.txt
 test "$(cat out.txt)" = "hello world"
 fileops delete out.txt
-! test -e out.txt
+# A pipeline starting with `!` is exempt from `set -e`, so negative checks must exit explicitly.
+if test -e out.txt; then echo "delete left out.txt behind" >&2; exit 1; fi
 
 # Exit codes are part of the contract; make sure the packaged binary honours them.
 fileops copy a.txt c.txt && exit 1 || test $? -eq 3
@@ -42,7 +43,7 @@ dpkg-deb -c /pkg/*.deb | grep -q ' \./usr/share/doc/fileops/copyright$'
 dpkg-deb -c /pkg/*.deb | grep -q ' \./usr/share/doc/fileops/changelog\.gz$'
 
 dpkg -r fileops >/dev/null
-! command -v fileops >/dev/null
+if command -v fileops >/dev/null; then echo "fileops still on PATH after removal" >&2; exit 1; fi
 echo "removed cleanly"
 EOF
 

@@ -21,9 +21,14 @@ on:
 permissions:
   contents: read
 
+# Superseded pull-request pushes are cancelled; main runs always complete so every merge has a record.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash # container steps otherwise get `sh -e`, which has no pipefail
 
 env:
   DOTNET_NOLOGO: "1"
@@ -73,7 +78,8 @@ jobs:
   lint:
     # Everything that is not C#: shell (shellcheck, shfmt), Dockerfiles (hadolint), YAML, Markdown,
     # editorconfig conformance, workflow syntax (actionlint) and Conventional Commits. Each tool runs
-    # from the pinned image named in scripts/lint.sh, so `make lint` locally checks the same rules.
+    # from the pinned image named in scripts/lint.sh, so `make lint` locally checks the same rules;
+    # zizmor runs through its action so findings land in code scanning.
     name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -88,12 +94,7 @@ jobs:
       - name: Lint everything that is not C#
         env:
           LINT_PREFER_DOCKER: "1"
-        run: scripts/lint.sh shell docker yaml markdown editorconfig
-      - name: actionlint
-        if: ${{ !env.ACT }}
-        run: |
-          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
-          ./actionlint -color
+        run: scripts/lint.sh shell docker yaml markdown editorconfig workflows
       - name: Conventional Commits
         if: github.event_name == 'pull_request'
         env:
@@ -216,14 +217,19 @@ jobs:
     # Optional, opt-in via repository secret. Reads the captured NDJSON telemetry and test results
     # and posts a structured root-cause summary, so the first look at a red build is already informed.
     name: AI failure diagnosis
-    needs: [build]
-    if: ${{ failure() && github.actor != 'nektos/act' }}
+    needs: [build, smoke]
+    # Same-repository pull requests only: there is a PR to comment on, and the artefacts handed to the
+    # model were produced from code that passed the ruleset, not from an arbitrary fork.
+    if: >-
+      ${{ failure()
+          && github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name == github.repository
+          && github.actor != 'nektos/act' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
-      id-token: write
     steps:
       - name: Check for API key
         id: key
