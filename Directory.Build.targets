@@ -1,0 +1,18 @@
+<Project>
+
+  <!--
+    Pin the NativeAOT toolchain packs that the SDK would otherwise reference implicitly at whatever
+    version it bundles. Without this, packages.lock.json differs between SDK patch versions
+    (e.g. 10.0.301 on a laptop vs 10.0.401 in the CI image) and locked-mode restore fails.
+    Updating the Known*Pack items is the SDK-supported way to choose the version; an explicit
+    PackageReference triggers a "delete explicit package reference" warning.
+    The version lives in Directory.Build.props; bump it together with docker/Dockerfile.build.
+  -->
+  <Target Name="PinNativeAotToolchain" BeforeTargets="ProcessFrameworkReferences" Condition="'$(NativeAotToolchainVersion)' != ''">
+    <ItemGroup>
+      <KnownILCompilerPack Update="Microsoft.DotNet.ILCompiler" ILCompilerPackVersion="$(NativeAotToolchainVersion)" />
+      <KnownILLinkPack Update="Microsoft.NET.ILLink.Tasks" ILLinkPackVersion="$(NativeAotToolchainVersion)" />
+    </ItemGroup>
+  </Target>
+
+</Project>
