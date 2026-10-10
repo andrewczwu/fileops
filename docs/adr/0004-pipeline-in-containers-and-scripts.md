@@ -13,11 +13,11 @@ failure, and make the pipeline impossible to exercise without pushing.
 - All build, test and packaging steps run inside `ghcr.io/andrewczwu/fileops-build`, built from
   `docker/Dockerfile.build` by its own workflow and rebuilt weekly for base-image patches.
 - Each multi-step task is a shell script in `scripts/` with a `Makefile` target; workflows call
-  `make <target>`. The YAML holds orchestration (job graph, caching, artefacts, summaries) only.
+  `make <target>` or the script directly. The YAML holds orchestration (job graph, caching, artefacts, summaries) only.
 - The workflows are runnable offline with `act` (`.actrc`); steps that need GitHub services are
   guarded and skipped locally.
 - Third-party actions are pinned to commit SHAs; Dependabot keeps them current. Jobs declare
-  least-privilege `permissions`, `timeout-minutes` and `concurrency`.
+  least-privilege `permissions` and `timeout-minutes` per job, and `concurrency` per workflow.
 
 ## Reasons
 
@@ -38,7 +38,7 @@ failure, and make the pipeline impossible to exercise without pushing.
   locally built image without network access.
 - Running jobs as the image's unprivileged user (`--user 1001`) is needed for permission tests,
   which costs a little setup (`DOTNET_CLI_HOME`, explicit `NUGET_PACKAGES`).
-- Each container job pays ~25 s to pull the image, which outweighs the work inside most jobs. The
+- Each container job pays ~15–25 s to pull the image, which outweighs the work inside most jobs. The
   pipeline therefore keeps a single container job for everything that needs the toolchain, and
   runs the formatter on the host SDK that the runner image already ships (see "Pipeline timing"
   in ARCHITECTURE.md). Finer-grained jobs would read better in the UI but would be slower.

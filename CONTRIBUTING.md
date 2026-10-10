@@ -4,15 +4,16 @@
 
 ```sh
 git clone https://github.com/andrewczwu/fileops && cd fileops
-make setup          # installs git hooks (gitleaks, actionlint) and local tools
+make setup          # points git at .githooks and restores dotnet tools (reportgenerator)
 make test           # build + unit + integration tests
 ```
 
 Requirements: the .NET 10 SDK (`global.json` pins the feature band), GNU Make 3.82 or newer (macOS
 ships 3.81; `brew install make` and use `gmake`, or put its `gnubin` directory first on `PATH`), and
 Docker if you want to build the Linux native binary or run the pipeline locally.
-`brew install make gitleaks actionlint zizmor nfpm act` gives you every tool the hooks and
-`make lint` use.
+`brew install make gitleaks actionlint zizmor shellcheck shfmt hadolint yamllint editorconfig-checker nfpm act`
+and `npm i -g markdownlint-cli2` give you every tool the hooks and `make lint` use. Without them
+`make lint` falls back to Docker images, but the pre-commit hook silently skips the missing tools.
 
 ## Formatting and style
 
@@ -39,7 +40,8 @@ C# issues and `shfmt -w` fixes shell formatting; the other tools report only.
 
 1. Branch from `main`: `git switch -c feat/short-description`.
 2. Make small commits using [Conventional Commits](https://www.conventionalcommits.org):
-   `feat:`, `fix:`, `ci:`, `build:`, `docs:`, `test:`, `refactor:`, `chore:`.
+   `feat:`, `fix:`, `ci:`, `build:`, `docs:`, `test:`, `refactor:`, `chore:`, `perf:`, `revert:`,
+   `style:`. The header is at most 72 characters with no trailing period; body lines at most 100.
 3. Add or update tests. Behavioural changes must also assert on the telemetry they emit — see
    [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) for the event-id contract.
 4. `make lint test` locally, or `make docker-test` to run inside the exact CI image.
@@ -67,7 +69,7 @@ tests/FileOps.Integration.Tests   runs the real executable; parses its JSON log 
 packaging/              nfpm spec, man page, Debian copyright
 scripts/                every multi-step task CI runs, callable locally through the Makefile
 docker/                 the pinned toolchain image
-docs/                   architecture, observability contract, decision records
+docs/                   product requirements, architecture, observability contract, decision records, reviews
 ```
 
 ## Decision records

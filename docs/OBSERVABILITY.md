@@ -8,10 +8,12 @@ and a failure can be diagnosed from the log stream alone. This document is the c
 | Channel | Where | Enabled by |
 | --- | --- | --- |
 | Logs | stderr, text or NDJSON | `--log-level` / `FILEOPS_LOG_LEVEL` (default `None`), `--log-format` / `FILEOPS_LOG_FORMAT` |
-| Logs, traces, metrics | OTLP | `OTEL_EXPORTER_OTLP_ENDPOINT` (standard `OTEL_*` variables honoured) |
+| Logs, traces, metrics | OTLP | `OTEL_EXPORTER_OTLP_ENDPOINT` (standard `OTEL_*` variables honoured); logs at Information and above by default while the console stays silent, `--log-level` governs every sink |
 | User-facing result | stderr, last line, `fileops: <message>` | always, on failure only |
 
-**stdout is never used** except by `--help` and `--version`, so the tool is safe in pipelines.
+**stdout is never used** except by `--help` and `--version`, so the tool is safe in pipelines. A usage
+error prints one `fileops: <message>` line per error plus `fileops: run 'fileops --help' for usage` on
+stderr and nothing on stdout.
 Log records are flushed before the summary line and before the process exits.
 
 ## Log events
@@ -32,9 +34,11 @@ Every record carries a stable `EventId`. Ranges: 1xxx lifecycle, 2xxx create, 3x
 
 Invariants (enforced by `TelemetryContractTests`):
 
-- a successful operation emits `1000` first and `1001` last, with nothing at Warning or above;
-- a failed operation emits `1002` with `ExitCode` equal to the process exit code and `Reason`
-  equal to the `fileops:` summary line, and never emits `1001`;
+- a successful operation emits `1000` first and `1001` last, with nothing at Warning or above, except
+  `5002` for `delete --force` on a missing path;
+- a failed operation emits `1002` with `ExitCode` (the `ExitCode` enum name, for example
+  `NotFound` for exit code 2) and `Reason` (the summary line without its `fileops:` prefix), and never
+  emits `1001`;
 - the `--log-format json` record shape is `{Timestamp, EventId, LogLevel, Category, Message, State{...}, Scopes[]}`,
   one object per line.
 
@@ -48,7 +52,7 @@ One span per operation from `ActivitySource` `FileOps`, named `fileops.<operatio
 | `file.path` | the file produced or removed |
 | `file.source`, `file.source2`, `file.destination` | inputs and output for copy/combine |
 | `file.size` | bytes written or removed |
-| `fileops.overwrite` | whether `--force` was given |
+| `fileops.overwrite` | whether `--force` was given (create, copy, combine) |
 | `fileops.exit_code` | numeric exit code (0 on success) |
 | `error.type` | exception type on failure |
 

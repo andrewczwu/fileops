@@ -50,7 +50,8 @@ whatever exporters it wants.
   The host is disposed before the summary line is written so log records always come first.
 - **`AppHost`** wires `ServiceCollection` with console logging (stderr only, text or JSON),
   `IMeterFactory`, and, when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, OpenTelemetry tracer, meter
-  and log providers. System.CommandLine 2.0 has no hosting layer, so this is deliberately small.
+  and log providers. The OTLP exporter receives Information and above by default while the console
+  stays silent; `--log-level` governs every sink. System.CommandLine 2.0 has no hosting layer, so this is deliberately small.
 - Published as a **NativeAOT** single binary: startup is milliseconds, there is no runtime to
   install, and `TreatWarningsAsErrors` on trim/AOT analysis means any package that stops being
   AOT-safe fails the build instead of the user.
@@ -62,8 +63,9 @@ whatever exporters it wants.
 | `FileOps.Core.Tests` | the library in-process | behaviour of each operation, atomicity, error mapping, and the telemetry emitted for every outcome |
 | `FileOps.Integration.Tests` | the real executable (managed build by default, native binary via `FILEOPS_BIN`) | argument parsing, exit codes, stdout/stderr discipline, JSON log schema, and that logged facts match reality |
 
-The same integration suite runs three times in CI: against the managed build, against the
-NativeAOT binary, and (as a shell script) against the installed `.deb` in clean containers.
+The same integration suite runs twice in CI: against the managed build and against the NativeAOT
+binary. A smoke script that exercises every command and the exit-code and logging contract then
+tests the installed `.deb` in clean containers.
 
 ## Delivery
 
@@ -75,13 +77,13 @@ docker/Dockerfile.build ─► ghcr.io/…/fileops-build   (weekly + on change)
    tag vX.Y.Z ─► release.yml: build ─► verify×4 ─► attest + GitHub release (.deb, .tar.gz, SHA256SUMS)
 ```
 
-Every multi-step CI task is a script under `scripts/` invoked through the `Makefile`, so
+Every multi-step CI task is a script under `scripts/`, usually invoked through the `Makefile`, so
 `make test`, `make package`, `make smoke` locally are the same commands the pipeline runs, and
 `act` can execute the workflows offline against the same toolchain image.
 
 ### Pipeline timing
 
-The job graph is shaped by one measurement: pulling the 1 GB toolchain image costs ~25 s per
+The job graph is shaped by one measurement: pulling the ~1.5 GB toolchain image costs ~15–25 s per
 container job on a hosted runner, and the work inside each job is smaller than that. The first
 layout had three container jobs in a chain (`test → package → lintian`), so two image pulls, an
 artifact round-trip and an `apt-get install lintian` sat on the critical path.
@@ -91,22 +93,22 @@ artifact round-trip and an `apt-get install lintian` sat on the critical path.
 | `test → package → lintian` (three container jobs) | 53 s + 60 s + 39 s | 2 m 40 s |
 | `build` (one container job) `→ smoke` | 82 s + 15 s | 1 m 42 s |
 
-Inside the consolidated `build` job: image pull 19 s, build + tests 21 s, NativeAOT publish 22 s,
+Inside the consolidated `build` job: image pull ~15–25 s, build + tests 21 s, NativeAOT publish 22 s,
 native-binary tests 3 s, `.deb` 2 s, lintian 3 s (it took 19 s on the host runner plus a 15 s
 `apt-get install`; running it from the image is both cheaper and version-pinned).
 
-Rules that follow from it: anything needing the toolchain image runs in the single `build` job;
-`format` uses the SDK preinstalled on the runner (the same 10.0.401 the image pins) rather than the
-image; `lintian` ships in the image instead of being installed per run. What remains on the
-critical path is real work — NativeAOT compilation and the test suites — plus one image pull.
-Further gains would need a smaller base image or caching the AOT object files, both of which cost
-more in maintenance than the seconds they save at this size.
+Rules that follow from it: anything needing the toolchain image runs in the single `build` job; `format`
+uses the SDK preinstalled on the runner (an SDK satisfying `global.json`, 10.0.401 at the time of
+writing, the same as the image) rather than the image; `lintian` ships in the image instead of being
+installed per run. What remains on the critical path is real work — NativeAOT compilation and the test
+suites — plus one image pull. Further gains would need a smaller base image or caching the AOT object
+files, both of which cost more in maintenance than the seconds they save at this size.
 
 ## Reproducible restores
 
 `packages.lock.json` files are committed and CI restores with `--locked-mode`, so the dependency
-graph that was tested is the one that ships. Two SDK behaviours would otherwise make the lock files
-machine-specific, and both are neutralised in the project files:
+graph that was tested is the one that ships. Three SDK behaviours would otherwise make the lock files
+machine-specific, and all are neutralised in the project files:
 
 - `PublishAot` adds implicit `Microsoft.DotNet.ILCompiler` / `Microsoft.NET.ILLink.Tasks` references
   at whatever version the installed SDK bundles. `Directory.Build.targets` pins them by updating the
@@ -119,7 +121,7 @@ machine-specific, and both are neutralised in the project files:
   `FileOps.Core.csproj` declares `RuntimeIdentifiers=linux-x64` and its lock file carries the RID
   section up front.
 
-The `act` run of the CI job is what caught both; see ADR 0004 for why the pipeline is runnable locally.
+The `act` run of the CI job is what caught these; see ADR 0004 for why the pipeline is runnable locally.
 
 ## Versioning
 

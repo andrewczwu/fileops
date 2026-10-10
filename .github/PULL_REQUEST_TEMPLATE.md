@@ -9,8 +9,8 @@
 ## Checklist
 
 - [ ] Title follows [Conventional Commits](https://www.conventionalcommits.org)
-      (`feat:`, `fix:`, `ci:`, `build:`, `docs:`, `test:`, `refactor:`)
+      (for example `feat:`, `fix:`, `ci:`, `build:`, `docs:`, `test:`, `refactor:`, `chore:`)
 - [ ] Tests added or updated, including telemetry assertions where behaviour changed
-- [ ] `make lint test` passes locally (or `make docker-test`)
+- [ ] `make lint test` passes locally (or `make docker-test` for the tests)
 - [ ] Docs updated (README, man page, ADR) if user-visible behaviour changed
 - [ ] No secrets or credentials in the diff (`gitleaks` pre-commit hook ran)
