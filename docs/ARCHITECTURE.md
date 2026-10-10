@@ -5,19 +5,19 @@ telemetry and the delivery pipeline are separate concerns with explicit contract
 
 ```
                       ┌──────────────────────────────┐
-  argv ──► FileOps.Cli │ System.CommandLine parse      │
-                      │ GlobalOptions (log level/fmt) │
-                      │ AppHost: DI + logging + OTLP  │
-                      │ CommandRunner: exceptions →   │──► exit code + "fileops: …" on stderr
-                      │   exit codes                  │
+ argv ──► FileOps.Cli │ System.CommandLine parse     │
+                      │ GlobalOptions (log level/fmt)│
+                      │ AppHost: DI + logging + OTLP │
+                      │ CommandRunner: exceptions →  │──► exit code + "fileops: …" on stderr
+                      │   exit codes                 │
                       └──────────────┬───────────────┘
                                      │ FileOperations.Create/Copy/Combine/Delete
                       ┌──────────────▼───────────────┐
-                      │ FileOps.Core                  │
-                      │  FileOperations  (Execute():  │──► span + metrics + log events
-                      │    span, timing, error map)   │
-                      │  AtomicFile      (tmp+rename) │──► files on disk
-                      │  Telemetry/*     (contract)   │
+                      │ FileOps.Core                 │
+                      │  FileOperations  (Execute(): │──► span + metrics + log events
+                      │    span, timing, error map)  │
+                      │  AtomicFile      (tmp+rename)│──► files on disk
+                      │  Telemetry/*     (contract)  │
                       └──────────────────────────────┘
 ```
 

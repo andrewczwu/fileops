@@ -28,7 +28,8 @@ C# 14 on .NET 10, compiled with NativeAOT to a self-contained `linux-x64` ELF bi
 
 - Building the Linux binary requires a Linux toolchain (`clang`, `zlib1g-dev`); this is provided by
   the pinned Docker image and is the reason local builds on macOS go through `make docker-*`.
-- The binary links against the build machine's glibc, so the image is based on Debian bookworm
-  (glibc 2.36) and the install smoke test covers Debian 12/13 and Ubuntu 22.04/24.04.
+- The binary links against the build machine's glibc. Microsoft publishes no Debian-based SDK image
+  for .NET 10, so the toolchain image is the Ubuntu 24.04 `-aot` variant (glibc 2.39) and the install
+  smoke test on Debian 12/13 and Ubuntu 22.04/24.04 is what proves the binary runs on older glibc.
 - The `.deb` ships a statically linked runtime, which lintian flags; the override is documented in
   `packaging/lintian-overrides`.
