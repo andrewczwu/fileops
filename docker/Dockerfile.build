@@ -20,6 +20,8 @@ ARG NFPM_VERSION=2.47.0
 # sha256 of nfpm_<version>_<arch>.deb from the release's checksums.txt; a tampered download fails the build.
 ARG NFPM_SHA256_AMD64=3f1cf344bd0b57373ca55636a78c08b0491f7293d609a456a9ac3b0b150fda97
 ARG NFPM_SHA256_ARM64=27419eb382695a7942be8ad52259f3ec1854fad001b3ae4baed34ce39a223b97
+# The checksum step pipes into sha256sum; make a failing producer fail the layer (hadolint DL4006).
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN apt-get update \
  && apt-get install -y --no-install-recommends make jq ca-certificates curl lintian \
  && rm -rf /var/lib/apt/lists/* \
