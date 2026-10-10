@@ -156,12 +156,7 @@ jobs:
         run: make publish
       - name: Integration tests against the native binary
         # The same suite that ran against the managed build now exercises the release artefact.
-        env:
-          FILEOPS_BIN: ${{ github.workspace }}/artifacts/publish/linux-x64/fileops
-          FILEOPS_TEST_LOG_DIR: artifacts/logs-native
-        run: >-
-          dotnet test tests/FileOps.Integration.Tests -c Release --no-restore
-          --logger trx --results-directory artifacts/test-results-native
+        run: make test-native
       - name: Build .deb
         run: make package
       - name: lintian

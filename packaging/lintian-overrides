@@ -1,3 +1,0 @@
-# The binary is a NativeAOT build: the .NET runtime is compiled in by design so the package
-# has no runtime dependency. Lintian flags this because Debian policy prefers shared libraries.
-fileops: statically-linked-binary [usr/bin/fileops]
