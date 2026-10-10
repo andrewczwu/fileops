@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 20
     container:
       # Releases build in an exact, immutable toolchain image (digest from the build-image job summary).
-      image: ghcr.io/andrewczwu/fileops-build:main@sha256:108ca2e8f23bb0fe911d5f7558b552fc8b7a1fd2487282f17c8fb05c05ed2069
+      image: ghcr.io/andrewczwu/fileops-build:main@sha256:2f3d05dbd9e0461ea5e22d577e13aac5430d65419e39f8277bddc5ef5dfdc61d
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
