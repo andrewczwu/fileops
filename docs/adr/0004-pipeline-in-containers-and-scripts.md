@@ -29,8 +29,11 @@ failure, and make the pipeline impossible to exercise without pushing.
 
 ## Consequences
 
-- The toolchain image is a dependency that must itself be versioned; its digest is printed in the
-  build-image job summary so workflows can be pinned to it.
+- The toolchain image is a dependency that must itself be versioned. The release workflow pins it
+  by digest (printed in the build-image job summary) so a release is reproducible bit for bit. CI
+  deliberately uses the `:main` tag instead: the tag is only ever written by this repository's own
+  workflow from a pinned Dockerfile, and a tag reference is what lets `act` run the jobs against a
+  locally built image without network access.
 - Running jobs as the image's unprivileged user (`--user 1001`) is needed for permission tests,
   which costs a little setup (`DOTNET_CLI_HOME`, explicit `NUGET_PACKAGES`).
 - `act` cannot run everything (OIDC, artifact API, code scanning), so some jobs are only proven on
