@@ -65,19 +65,14 @@ public sealed class FileOperations
                 throw new FileOpsException(ExitCode.UsageError, $"source and destination are the same file: {source}", source);
             }
 
-            // The source's permission bits go onto the temp file before any content does, so the
-            // copy is never readable more widely than the original, not even between write and rename.
+            // The temp file is created with the source's permission bits, so the copy is never
+            // readable more widely than the original, not even for the instant before the rename.
             UnixFileMode? mode = OperatingSystem.IsWindows() ? null : File.GetUnixFileMode(source);
             var bytes = AtomicFile.Write(destination, overwrite, stream =>
             {
-                if (!OperatingSystem.IsWindows() && mode is { } m)
-                {
-                    File.SetUnixFileMode(stream.SafeFileHandle, m);
-                }
-
                 using var input = OpenForRead(source);
                 input.CopyTo(stream, CopyBufferSize);
-            });
+            }, mode);
 
             Log.FileCopied(_logger, source, destination, bytes);
             return new OperationResult(FileOperation.Copy, destination, bytes);

@@ -20,17 +20,20 @@ internal static class AtomicFile
     /// <param name="destination">Final path of the file.</param>
     /// <param name="overwrite">Whether an existing destination may be replaced.</param>
     /// <param name="write">Callback that writes the content to the open temp file.</param>
+    /// <param name="mode">
+    /// Unix permission bits the file is created with. When <see langword="null"/>, an overwritten
+    /// destination's bits are kept; a new file gets the process default.
+    /// </param>
     /// <returns>The number of bytes written.</returns>
     /// <remarks>
-    /// When an existing destination is overwritten its permission bits are carried over to the new
-    /// file before any content is written, so the replacement is never more readable than the
-    /// original. The callback may set a different mode on the stream's handle.
+    /// The permission bits are passed to the <c>open(2)</c> call that creates the temp file, so there is
+    /// no instant at which it exists with wider permissions than intended.
     /// </remarks>
     /// <exception cref="FileOpsException">
     /// <see cref="ExitCode.NotFound"/> if the destination directory does not exist;
     /// <see cref="ExitCode.AlreadyExists"/> if the destination exists and <paramref name="overwrite"/> is false.
     /// </exception>
-    public static long Write(string destination, bool overwrite, Action<FileStream> write)
+    public static long Write(string destination, bool overwrite, Action<FileStream> write, UnixFileMode? mode = null)
     {
         var fullPath = Path.GetFullPath(destination);
         var directory = Path.GetDirectoryName(fullPath) ?? Path.GetPathRoot(fullPath) ?? fullPath;
@@ -46,17 +49,27 @@ internal static class AtomicFile
             throw new FileOpsException(ExitCode.AlreadyExists, $"file already exists: {destination} (use --force to overwrite)", destination);
         }
 
-        UnixFileMode? existingMode = exists && !OperatingSystem.IsWindows() ? File.GetUnixFileMode(fullPath) : null;
+        var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None };
+        if (!OperatingSystem.IsWindows())
+        {
+            // Create the temp file with its final bits so no observer ever sees it wider than intended.
+            var createMode = mode ?? (exists ? File.GetUnixFileMode(fullPath) : null);
+            if (createMode is { } m)
+            {
+                options.UnixCreateMode = m;
+            }
+        }
 
         var tempPath = Path.Combine(directory, $".{TruncateName(Path.GetFileName(fullPath))}.{Guid.NewGuid():N}.tmp");
         try
         {
             long bytes;
-            using (var stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            using (var stream = new FileStream(tempPath, options))
             {
-                if (!OperatingSystem.IsWindows() && existingMode is { } mode)
+                if (!OperatingSystem.IsWindows() && options.UnixCreateMode is { } m)
                 {
-                    File.SetUnixFileMode(stream.SafeFileHandle, mode);
+                    // open(2) applies the umask to the requested bits; restore any it masked off.
+                    File.SetUnixFileMode(stream.SafeFileHandle, m);
                 }
 
                 write(stream);
