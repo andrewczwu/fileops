@@ -1,10 +1,11 @@
 # Entry point for humans and CI alike. Every CI job calls a target defined here, so a green
 # pipeline can always be reproduced locally with the same command.
 #
-#   make test            run everything the CI "test" job runs
-#   make docker-test     the same, inside the pinned build container
-#   make package         NativeAOT publish + .deb (linux only; use docker-package on macOS)
+#   make test            unit + integration tests, as the CI "Build, test & package" job runs them
+#   make docker-test     the same, inside the pinned toolchain image as the same unprivileged user
+#   make package         NativeAOT publish + .deb (Linux only; use docker-package on macOS)
 #   make smoke           install the .deb into clean Debian/Ubuntu containers and exercise it
+#   make ci              lint, test, package, lintian, smoke in order (Linux with Docker)
 
 SHELL := /usr/bin/env bash
 .SHELLFLAGS := -euo pipefail -c
@@ -17,17 +18,19 @@ ARTIFACTS := artifacts
 BUILD_IMAGE ?= fileops-build:local
 DOCKER_PLATFORM ?= linux/amd64
 
-# Mount the host NuGet cache so container builds are fast and work offline.
+# Run as the image's unprivileged user, exactly like CI, so permission tests execute rather than
+# skip. The host NuGet cache is mounted so container builds are fast and work offline.
 DOCKER_RUN = docker run --rm --platform $(DOCKER_PLATFORM) \
+	--user 1001:1001 -e HOME=/home/builder -e DOTNET_CLI_HOME=/tmp/dotnet-home \
 	-v "$(CURDIR)":/src -w /src \
-	-v "$(HOME)/.nuget/packages":/root/.nuget/packages \
+	-v "$(HOME)/.nuget/packages":/home/builder/.nuget/packages \
 	-e VERSION=$(VERSION) -e RID=$(RID) -e CONFIG=$(CONFIG) -e CI=$${CI:-} \
 	$(BUILD_IMAGE)
 
 .PHONY: help setup restore build lint format test coverage publish test-native package release-assets smoke lint-deb clean build-image docker-% ci
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_%-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
 setup: ## One-time developer setup: git hooks and local tools
 	git config core.hooksPath .githooks
