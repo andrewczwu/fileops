@@ -31,13 +31,11 @@ public sealed class FileOperations
     /// <param name="path">File to create.</param>
     /// <param name="text">Initial content, or <see langword="null"/> for an empty file.</param>
     /// <param name="overwrite">Replace an existing file instead of failing.</param>
-    public OperationResult Create(string path, string? text = null, bool overwrite = false)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-
-        return Execute(FileOperation.Create, path, activity =>
+    public OperationResult Create(string path, string? text = null, bool overwrite = false) =>
+        Execute(FileOperation.Create, path, activity =>
         {
             activity?.SetTag(FileOpsActivitySource.Tags.Overwrite, overwrite);
+            RequirePath(path, "path");
             RejectDirectory(path);
 
             var content = System.Text.Encoding.UTF8.GetBytes(text ?? string.Empty);
@@ -46,23 +44,20 @@ public sealed class FileOperations
             Log.FileCreated(_logger, path, bytes);
             return new OperationResult(FileOperation.Create, path, bytes);
         });
-    }
 
     /// <summary>Copies <paramref name="source"/> to <paramref name="destination"/>, preserving Unix permissions.</summary>
     /// <param name="source">Existing file to copy.</param>
     /// <param name="destination">Path of the new copy.</param>
     /// <param name="overwrite">Replace an existing destination instead of failing.</param>
-    public OperationResult Copy(string source, string destination, bool overwrite = false)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(source);
-        ArgumentException.ThrowIfNullOrWhiteSpace(destination);
-
-        return Execute(FileOperation.Copy, destination, activity =>
+    public OperationResult Copy(string source, string destination, bool overwrite = false) =>
+        Execute(FileOperation.Copy, destination, activity =>
         {
             activity?.SetTag(FileOpsActivitySource.Tags.Source, source);
             activity?.SetTag(FileOpsActivitySource.Tags.Destination, destination);
             activity?.SetTag(FileOpsActivitySource.Tags.Overwrite, overwrite);
 
+            RequirePath(source, "source");
+            RequirePath(destination, "destination");
             RequireFile(source);
             RejectDirectory(destination);
             if (SamePath(source, destination))
@@ -70,20 +65,23 @@ public sealed class FileOperations
                 throw new FileOpsException(ExitCode.UsageError, $"source and destination are the same file: {source}", source);
             }
 
+            // The source's permission bits go onto the temp file before any content does, so the
+            // copy is never readable more widely than the original, not even between write and rename.
+            UnixFileMode? mode = OperatingSystem.IsWindows() ? null : File.GetUnixFileMode(source);
             var bytes = AtomicFile.Write(destination, overwrite, stream =>
             {
+                if (!OperatingSystem.IsWindows() && mode is { } m)
+                {
+                    File.SetUnixFileMode(stream.SafeFileHandle, m);
+                }
+
                 using var input = OpenForRead(source);
                 input.CopyTo(stream, CopyBufferSize);
             });
-            if (!OperatingSystem.IsWindows())
-            {
-                File.SetUnixFileMode(destination, File.GetUnixFileMode(source));
-            }
 
             Log.FileCopied(_logger, source, destination, bytes);
             return new OperationResult(FileOperation.Copy, destination, bytes);
         });
-    }
 
     /// <summary>
     /// Concatenates <paramref name="first"/> then <paramref name="second"/> into <paramref name="output"/>.
@@ -94,19 +92,17 @@ public sealed class FileOperations
     /// <param name="second">Second input file.</param>
     /// <param name="output">File to write.</param>
     /// <param name="overwrite">Replace an existing output instead of failing.</param>
-    public OperationResult Combine(string first, string second, string output, bool overwrite = false)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(first);
-        ArgumentException.ThrowIfNullOrWhiteSpace(second);
-        ArgumentException.ThrowIfNullOrWhiteSpace(output);
-
-        return Execute(FileOperation.Combine, output, activity =>
+    public OperationResult Combine(string first, string second, string output, bool overwrite = false) =>
+        Execute(FileOperation.Combine, output, activity =>
         {
             activity?.SetTag(FileOpsActivitySource.Tags.Source, first);
             activity?.SetTag(FileOpsActivitySource.Tags.SecondSource, second);
             activity?.SetTag(FileOpsActivitySource.Tags.Destination, output);
             activity?.SetTag(FileOpsActivitySource.Tags.Overwrite, overwrite);
 
+            RequirePath(first, "first");
+            RequirePath(second, "second");
+            RequirePath(output, "output");
             RequireFile(first);
             RequireFile(second);
             RejectDirectory(output);
@@ -125,17 +121,14 @@ public sealed class FileOperations
             Log.FilesCombined(_logger, first, second, output, bytes);
             return new OperationResult(FileOperation.Combine, output, bytes);
         });
-    }
 
     /// <summary>Deletes a file. Directories are refused.</summary>
     /// <param name="path">File to delete.</param>
     /// <param name="ignoreMissing">Succeed (with a warning) when the file does not exist.</param>
-    public OperationResult Delete(string path, bool ignoreMissing = false)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-
-        return Execute(FileOperation.Delete, path, _ =>
+    public OperationResult Delete(string path, bool ignoreMissing = false) =>
+        Execute(FileOperation.Delete, path, _ =>
         {
+            RequirePath(path, "path");
             RejectDirectory(path);
 
             var info = new FileInfo(path);
@@ -156,7 +149,6 @@ public sealed class FileOperations
             Log.FileDeleted(_logger, path, bytes);
             return new OperationResult(FileOperation.Delete, path, bytes);
         });
-    }
 
     /// <summary>
     /// Runs <paramref name="body"/> inside a span with timing, metrics and lifecycle logs, and maps
@@ -214,6 +206,15 @@ public sealed class FileOperations
         _ =>
             new FileOpsException(ExitCode.InternalError, $"unexpected error on {path}: {ex.Message}", path, ex),
     };
+
+    /// <summary>An empty argument is a usage error (exit 1), reported through the normal failure path.</summary>
+    private static void RequirePath(string value, string name)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new FileOpsException(ExitCode.UsageError, $"{name} must not be empty", value);
+        }
+    }
 
     private static void RequireFile(string path)
     {
