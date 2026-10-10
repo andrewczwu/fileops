@@ -61,8 +61,9 @@ sed "s|@LIBC6_DEPENDS@|libc6 (>= ${GLIBC_FLOOR})|" packaging/nfpm.yaml >"${STAGE
 # The control file carries the Debian version (1.2.3~rc.1, so dpkg sorts it before 1.2.3), but the
 # file is named with the SemVer form: GitHub release assets cannot contain `~` and would rename it,
 # breaking the match with SHA256SUMS.
+DEB_FILE="${OUT}/fileops_${VERSION}_${ARCH}.deb"
 VERSION="${DEB_VERSION}" ARCH="${ARCH}" \
-  nfpm package --config "${STAGE}/nfpm.yaml" --packager deb --target "${OUT}/fileops_${VERSION}_${ARCH}.deb"
+  nfpm package --config "${STAGE}/nfpm.yaml" --packager deb --target "${DEB_FILE}"
 
 (
   cd "${OUT}"
