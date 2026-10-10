@@ -48,7 +48,10 @@ internal sealed class AppHost : IDisposable
 
         services.AddLogging(logging =>
         {
-            logging.SetMinimumLevel(settings.MinimumLevel);
+            // --log-level governs every sink. When nothing was chosen and an OTLP endpoint is set,
+            // the collector still receives Information and above; the console stays silent.
+            var exporting = settings.OtlpEndpoint is not null;
+            logging.SetMinimumLevel(settings.MinimumLevel == LogLevel.None && exporting ? LogLevel.Information : settings.MinimumLevel);
             // Stamp every record with the current span so logs and traces can be joined.
             logging.Configure(o => o.ActivityTrackingOptions = ActivityTrackingOptions.TraceId | ActivityTrackingOptions.SpanId);
 
@@ -76,7 +79,7 @@ internal sealed class AppHost : IDisposable
                 }
             }
 
-            if (settings.OtlpEndpoint is not null)
+            if (exporting)
             {
                 logging.AddOpenTelemetry(o =>
                 {
