@@ -1,0 +1,13 @@
+# Defaults for running the GitHub Actions workflows locally with `act` (https://nektosact.com).
+# Steps that need GitHub services (OIDC, artifacts API, code scanning) are guarded with
+# `if: ${{ !env.ACT }}` (steps) or `github.actor != 'nektos/act'` (jobs).
+#
+# Build the toolchain image first and tag it with the name the workflows use:
+#   make build-image BUILD_IMAGE=ghcr.io/andrewczwu/fileops-build:main
+-P ubuntu-latest=catthehacker/ubuntu:act-22.04
+--container-architecture linux/amd64
+--action-offline-mode
+--pull=false
+--artifact-server-path /tmp/act-artifacts
+# Mount the host NuGet cache so container jobs restore offline (see scripts/ci/nuget-cache-path.sh).
+--container-options "-v ${HOME}/.nuget/packages:/nuget-cache"

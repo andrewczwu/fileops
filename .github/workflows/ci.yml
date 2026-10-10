@@ -1,0 +1,273 @@
+# Continuous integration: every push to main and every pull request.
+#
+#   format ─┐
+#   secrets ├─ (independent, fast feedback)
+#   workflows ┘
+#   test ──► package ──► lint-deb
+#                   └──► smoke (matrix of clean Debian/Ubuntu containers)
+#   diagnose (only on failure; AI-assisted summary from the captured telemetry)
+#
+# Build and test steps run inside the pinned toolchain image so `make docker-test` locally
+# reproduces CI exactly. Third-party actions are pinned to commit SHAs; Dependabot bumps them.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  CI: "true"
+  # Pre-release build number so CI artefacts sort below any tagged release.
+  VERSION: 0.0.0-ci.${{ github.run_number }}
+
+jobs:
+  format:
+    name: Format & analyzers
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: ghcr.io/andrewczwu/fileops-build:main
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Restore (locked)
+        run: dotnet restore --locked-mode
+      - name: Verify formatting and code style
+        run: dotnet format --no-restore --verify-no-changes
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0 # scan the whole history, not just the diff
+          persist-credentials: false
+      - name: gitleaks
+        if: ${{ !env.ACT }}
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  workflows:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write # zizmor uploads SARIF to code scanning
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: actionlint
+        if: ${{ !env.ACT }}
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color
+      - name: zizmor
+        if: ${{ !env.ACT }}
+        uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+
+  test:
+    name: Build & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: ghcr.io/andrewczwu/fileops-build:main
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      # Run as the image's unprivileged user so permission-denied tests execute instead of skipping.
+      options: --user 1001:1001
+    env:
+      DOTNET_CLI_HOME: /tmp/dotnet-home
+      FILEOPS_TEST_LOG_DIR: artifacts/logs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Locate NuGet cache
+        run: scripts/ci/nuget-cache-path.sh >> "$GITHUB_ENV"
+      - name: Cache NuGet packages
+        if: ${{ !env.ACT }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Build and test
+        run: make test
+      - name: Coverage report
+        if: always()
+        run: |
+          dotnet tool restore
+          make coverage
+          cat artifacts/coverage/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Telemetry evidence
+        if: always()
+        run: scripts/telemetry-summary.sh artifacts/logs/cli-runs.ndjson >> "$GITHUB_STEP_SUMMARY"
+      - name: Test report
+        if: ${{ always() && !env.ACT }}
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3
+        with:
+          name: Test results
+          path: artifacts/test-results/*.trx
+          reporter: dotnet-trx
+          use-actions-summary: "true"
+      - name: Upload test artefacts
+        if: ${{ always() && !env.ACT }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: test-results
+          path: |
+            artifacts/test-results
+            artifacts/coverage
+            artifacts/logs
+          retention-days: 14
+
+  package:
+    name: Native binary & .deb
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: ghcr.io/andrewczwu/fileops-build:main
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      options: --user 1001:1001
+    env:
+      DOTNET_CLI_HOME: /tmp/dotnet-home
+      RID: linux-x64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Locate NuGet cache
+        run: scripts/ci/nuget-cache-path.sh >> "$GITHUB_ENV"
+      - name: Cache NuGet packages
+        if: ${{ !env.ACT }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - name: Publish NativeAOT binary
+        run: make publish
+      - name: Integration tests against the native binary
+        # The same suite that ran against the managed build now exercises the release artefact.
+        env:
+          FILEOPS_BIN: ${{ github.workspace }}/artifacts/publish/linux-x64/fileops
+          FILEOPS_TEST_LOG_DIR: artifacts/logs-native
+        run: dotnet test tests/FileOps.Integration.Tests -c Release --logger trx --results-directory artifacts/test-results-native
+      - name: Build .deb
+        run: make package
+      - name: Artefact summary
+        run: scripts/ci/artifact-summary.sh >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload package
+        if: ${{ !env.ACT }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: fileops-deb
+          path: |
+            artifacts/deb
+            artifacts/publish/linux-x64/fileops
+          retention-days: 14
+          if-no-files-found: error
+
+  lint-deb:
+    name: lintian
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: fileops-deb
+          path: artifacts
+      - name: Install lintian
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends lintian
+      - name: lintian
+        run: scripts/lint-deb.sh
+
+  smoke:
+    name: Install on ${{ matrix.image }}
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [debian:bookworm-slim, debian:trixie-slim, ubuntu:22.04, ubuntu:24.04]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: fileops-deb
+          path: artifacts
+      - name: Install and exercise the package
+        env:
+          SMOKE_IMAGES: ${{ matrix.image }}
+        run: scripts/smoke-test.sh
+
+  diagnose:
+    # Optional, opt-in via repository secret. Reads the captured NDJSON telemetry and test results
+    # and posts a structured root-cause summary, so the first look at a red build is already informed.
+    name: AI failure diagnosis
+    needs: [test, package]
+    if: ${{ failure() && github.actor != 'nektos/act' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Check for API key
+        id: key
+        run: echo "present=${{ secrets.ANTHROPIC_API_KEY != '' }}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        if: steps.key.outputs.present == 'true'
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        if: steps.key.outputs.present == 'true'
+        with:
+          name: test-results
+          path: artifacts
+      - name: Diagnose from telemetry
+        if: steps.key.outputs.present == 'true'
+        uses: anthropics/claude-code-action@1d6de8cb0c237e7c15e9e1bdf973826ebae490cc # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            The CI run for this commit failed. Diagnose it from evidence only; do not modify files.
+            Evidence: artifacts/test-results/*.trx (test outcomes), artifacts/logs/cli-runs.ndjson
+            (structured logs from every CLI invocation: a header {"run":{args,exitCode}} followed by
+            JSON log records with EventId/LogLevel/State). docs/OBSERVABILITY.md explains the event ids.
+            Report: (1) which tests failed, (2) the log records that explain each failure, quoting EventId
+            and State fields, (3) the most likely root cause in the source, with file:line, (4) whether it
+            looks flaky or deterministic. Keep it under 300 words.
+          claude_args: --max-turns 8 --model claude-sonnet-5-5
