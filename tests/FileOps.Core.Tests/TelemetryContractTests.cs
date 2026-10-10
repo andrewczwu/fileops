@@ -25,7 +25,19 @@ public sealed class TelemetryContractTests : IDisposable
         _dir.Dispose();
     }
 
-    public static TheoryData<FileOperation> AllOperations => new(Enum.GetValues<FileOperation>());
+    /// <summary>Every <see cref="FileOperation"/>, so a new member is covered automatically.</summary>
+    public static TheoryData<FileOperation> AllOperations { get; } = BuildAllOperations();
+
+    private static TheoryData<FileOperation> BuildAllOperations()
+    {
+        var data = new TheoryData<FileOperation>();
+        foreach (var operation in Enum.GetValues<FileOperation>())
+        {
+            data.Add(operation);
+        }
+
+        return data;
+    }
 
     [Theory]
     [MemberData(nameof(AllOperations))]

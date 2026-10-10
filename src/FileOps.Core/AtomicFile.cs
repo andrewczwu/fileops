@@ -21,7 +21,7 @@ internal static class AtomicFile
     public static long Write(string destination, bool overwrite, Action<Stream> write)
     {
         var fullPath = Path.GetFullPath(destination);
-        var directory = Path.GetDirectoryName(fullPath) ?? Path.GetPathRoot(fullPath)!;
+        var directory = Path.GetDirectoryName(fullPath) ?? Path.GetPathRoot(fullPath) ?? fullPath;
 
         if (!Directory.Exists(directory))
         {

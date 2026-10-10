@@ -50,7 +50,7 @@ public sealed class CommandTests : IDisposable
     [Fact]
     public void Copy_preserves_content_of_multi_megabyte_file()
     {
-        var content = RandomNumberGenerator.GetBytes(4 * 1024 * 1024 + 3);
+        var content = RandomNumberGenerator.GetBytes((4 * 1024 * 1024) + 3);
         _dir.WriteFile("src.bin", content);
 
         var result = Tool.Run(_dir.Path, "copy", "src.bin", "dst.bin");
@@ -97,8 +97,8 @@ public sealed class CommandTests : IDisposable
     [Fact]
     public void Combine_preserves_binary_content_across_buffer_boundaries()
     {
-        var first = RandomNumberGenerator.GetBytes(2 * 1024 * 1024 + 11); // > 1 MiB copy buffer, odd length
-        var second = RandomNumberGenerator.GetBytes(1024 * 1024 + 7);
+        var first = RandomNumberGenerator.GetBytes((2 * 1024 * 1024) + 11); // > 1 MiB copy buffer, odd length
+        var second = RandomNumberGenerator.GetBytes((1024 * 1024) + 7);
         _dir.WriteFile("a.bin", first);
         _dir.WriteFile("b.bin", second);
 

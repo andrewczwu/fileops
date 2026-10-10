@@ -6,12 +6,14 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Documentation generation stays on so IDE0005 (unnecessary usings) is checked in tests too; the comments themselves are not required. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!--
+      CS1591: missing XML comment; tests do not need API documentation.
       CA1707: underscores in test names are the xunit convention (Does_x_when_y).
       CA1416: Unix-only file-mode tests are guarded by NonRootFact, which skips on Windows.
     -->
-    <NoWarn>$(NoWarn);CA1707;CA1416</NoWarn>
+    <NoWarn>$(NoWarn);CS1591;CA1707;CA1416</NoWarn>
   </PropertyGroup>
 
 </Project>

@@ -5,7 +5,6 @@ using FileOps.Core.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.Metrics.Testing;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
 
 namespace FileOps.Core.Tests.Support;
@@ -37,7 +36,7 @@ internal sealed class ObservedOperations : IDisposable
         _listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == FileOpsActivitySource.Name,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            Sample = (ref _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity =>
             {
                 if (activity.Parent != _root)
@@ -76,7 +75,7 @@ internal sealed class ObservedOperations : IDisposable
         {
             lock (_spans)
             {
-                return _spans.ToArray();
+                return [.. _spans];
             }
         }
     }

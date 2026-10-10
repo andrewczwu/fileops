@@ -26,7 +26,7 @@ public sealed class CreateTests : IDisposable
         var result = _ops.Sut.Create(path);
 
         Assert.Equal(new OperationResult(FileOperation.Create, path, 0), result);
-        Assert.Equal(Array.Empty<byte>(), File.ReadAllBytes(path));
+        Assert.Equal([], File.ReadAllBytes(path));
     }
 
     [Fact]
