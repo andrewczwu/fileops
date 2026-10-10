@@ -118,10 +118,8 @@ public sealed class FileOperations
                     a.CopyTo(stream, CopyBufferSize);
                 }
 
-                using (var b = OpenForRead(second))
-                {
-                    b.CopyTo(stream, CopyBufferSize);
-                }
+                using var b = OpenForRead(second);
+                b.CopyTo(stream, CopyBufferSize);
             });
 
             Log.FilesCombined(_logger, first, second, output, bytes);

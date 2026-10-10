@@ -20,7 +20,7 @@ internal static class Tool
     /// </summary>
     public const string LogDirectoryVariable = "FILEOPS_TEST_LOG_DIR";
 
-    private static readonly object LogFileLock = new();
+    private static readonly Lock LogFileLock = new();
 
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
@@ -118,17 +118,15 @@ internal static class Tool
 internal sealed record CliResult(int ExitCode, string Stdout, string Stderr)
 {
     /// <summary>Lines on stderr that are JSON log records, parsed.</summary>
-    public IReadOnlyList<JsonElement> LogRecords { get; } = Stderr
+    public IReadOnlyList<JsonElement> LogRecords { get; } = [.. Stderr
         .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .Where(line => line.StartsWith('{'))
-        .Select(line => JsonDocument.Parse(line).RootElement)
-        .ToList();
+        .Select(line => JsonDocument.Parse(line).RootElement)];
 
     /// <summary>Lines on stderr that are user-facing messages (the <c>fileops: ...</c> summary).</summary>
-    public IReadOnlyList<string> Messages { get; } = Stderr
+    public IReadOnlyList<string> Messages { get; } = [.. Stderr
         .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-        .Where(line => line.StartsWith("fileops:", StringComparison.Ordinal))
-        .ToList();
+        .Where(line => line.StartsWith("fileops:", StringComparison.Ordinal))];
 
     /// <summary>The single log record with the given event id; fails if there is not exactly one.</summary>
     public JsonElement Log(int eventId) =>

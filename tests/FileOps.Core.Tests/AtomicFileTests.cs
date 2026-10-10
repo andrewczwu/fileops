@@ -50,10 +50,7 @@ public sealed class AtomicFileTests : IDisposable
         // Rename is only atomic within one file system, so the temp file must live beside the destination.
         string? observedTemp = null;
 
-        AtomicFile.Write(_dir.File("out"), overwrite: false, _ =>
-        {
-            observedTemp = Directory.EnumerateFiles(_dir.Path, ".*.tmp").SingleOrDefault();
-        });
+        AtomicFile.Write(_dir.File("out"), overwrite: false, _ => observedTemp = Directory.EnumerateFiles(_dir.Path, ".*.tmp").SingleOrDefault());
 
         Assert.NotNull(observedTemp);
         Assert.Equal(_dir.Path, Path.GetDirectoryName(observedTemp));

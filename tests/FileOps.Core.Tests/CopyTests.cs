@@ -20,7 +20,7 @@ public sealed class CopyTests : IDisposable
     [Fact]
     public void Copies_content_byte_for_byte()
     {
-        var content = RandomNumberGenerator.GetBytes(3 * 1024 * 1024 + 17); // crosses several 1 MiB buffer boundaries
+        var content = RandomNumberGenerator.GetBytes((3 * 1024 * 1024) + 17); // crosses several 1 MiB buffer boundaries
         var source = _dir.WriteFile("src.bin", content);
         var destination = _dir.File("dst.bin");
 
