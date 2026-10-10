@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Turn the NDJSON log stream captured by the integration tests into a Markdown report.
-# Used by CI to append telemetry evidence to the job summary, and by the failure-diagnosis
-# step so an engineer (or an AI assistant) can see what the tool did without re-running tests.
+# Used by the CI build job to append telemetry evidence to the job summary, so an engineer (or an
+# AI assistant reading the uploaded NDJSON) can see what the tool did without re-running tests.
 #
 # Usage: scripts/telemetry-summary.sh artifacts/logs/cli-runs.ndjson
 set -euo pipefail
