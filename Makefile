@@ -1,0 +1,86 @@
+# Entry point for humans and CI alike. Every CI job calls a target defined here, so a green
+# pipeline can always be reproduced locally with the same command.
+#
+#   make test            run everything the CI "test" job runs
+#   make docker-test     the same, inside the pinned build container
+#   make package         NativeAOT publish + .deb (linux only; use docker-package on macOS)
+#   make smoke           install the .deb into clean Debian/Ubuntu containers and exercise it
+
+SHELL := /usr/bin/env bash
+.SHELLFLAGS := -euo pipefail -c
+.DEFAULT_GOAL := help
+
+VERSION   ?= 0.0.0-dev
+RID       ?= linux-x64
+CONFIG    ?= Release
+ARTIFACTS := artifacts
+BUILD_IMAGE ?= fileops-build:local
+DOCKER_PLATFORM ?= linux/amd64
+
+# Mount the host NuGet cache so container builds are fast and work offline.
+DOCKER_RUN = docker run --rm --platform $(DOCKER_PLATFORM) \
+	-v "$(CURDIR)":/src -w /src \
+	-v "$(HOME)/.nuget/packages":/root/.nuget/packages \
+	-e VERSION=$(VERSION) -e RID=$(RID) -e CONFIG=$(CONFIG) -e CI=$${CI:-} \
+	$(BUILD_IMAGE)
+
+.PHONY: help setup restore build lint format test coverage publish package smoke lint-deb clean \
+        build-image docker-% ci
+
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+
+setup: ## One-time developer setup: git hooks and local tools
+	git config core.hooksPath .githooks
+	dotnet tool restore
+	@echo "Hooks installed. Install gitleaks and actionlint for the pre-commit hook: brew install gitleaks actionlint"
+
+restore: ## Restore packages (locked mode in CI so the lock files are authoritative)
+	dotnet restore $(if $(CI),--locked-mode,)
+
+build: restore ## Build all projects
+	dotnet build --no-restore -c $(CONFIG) -p:Version=$(VERSION)
+
+lint: restore ## Formatting, analyzers, workflow and secret scanning
+	dotnet format --no-restore --verify-no-changes
+	@command -v actionlint >/dev/null && actionlint || echo "actionlint not installed; skipping"
+	@command -v zizmor >/dev/null && zizmor .github/workflows || echo "zizmor not installed; skipping"
+	@command -v gitleaks >/dev/null && gitleaks git --no-banner --redact . || echo "gitleaks not installed; skipping"
+
+format: ## Apply formatting fixes
+	dotnet format
+
+test: build ## Unit + integration tests with coverage and TRX results
+	dotnet test --no-build -c $(CONFIG) \
+		--logger "trx" --results-directory $(ARTIFACTS)/test-results \
+		--collect:"XPlat Code Coverage" \
+		-- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+
+coverage: ## Render coverage report from the last test run (HTML + Markdown summary)
+	dotnet tool run reportgenerator \
+		-reports:"$(ARTIFACTS)/test-results/**/coverage.cobertura.xml" \
+		-targetdir:$(ARTIFACTS)/coverage \
+		-reporttypes:"Html;MarkdownSummaryGithub;Cobertura"
+
+publish: ## Publish a self-contained NativeAOT binary for $(RID)
+	scripts/publish.sh
+
+package: publish ## Build the .deb package from the published binary
+	scripts/package.sh
+
+smoke: ## Install the .deb in clean Debian and Ubuntu containers and exercise every command
+	scripts/smoke-test.sh
+
+lint-deb: ## Run lintian against the built .deb
+	scripts/lint-deb.sh
+
+clean: ## Remove build output
+	rm -rf $(ARTIFACTS)
+
+build-image: ## Build the pinned toolchain image used by CI and docker-* targets
+	docker build --platform $(DOCKER_PLATFORM) -t $(BUILD_IMAGE) -f docker/Dockerfile.build docker
+
+docker-%: ## Run any target inside the build container, e.g. make docker-test
+	$(DOCKER_RUN) make $* VERSION=$(VERSION) RID=$(RID) CONFIG=$(CONFIG)
+
+ci: lint test package lint-deb smoke ## Everything the pipeline runs, in order
