@@ -204,7 +204,7 @@ tests/                   unit and integration tests
 packaging/               nfpm spec, man page, Debian copyright
 scripts/                 build, publish, package, smoke-test, CI helpers
 docker/                  toolchain image
-docs/                    architecture, observability contract, decision records
+docs/                    product requirements, architecture, observability contract, decision records, reviews
 .github/                 workflows, Dependabot, CODEOWNERS, PR template
 ```
 
