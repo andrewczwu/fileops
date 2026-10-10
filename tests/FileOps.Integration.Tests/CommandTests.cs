@@ -95,6 +95,23 @@ public sealed class CommandTests : IDisposable
     }
 
     [Fact]
+    public void Combine_preserves_binary_content_across_buffer_boundaries()
+    {
+        var first = RandomNumberGenerator.GetBytes(2 * 1024 * 1024 + 11); // > 1 MiB copy buffer, odd length
+        var second = RandomNumberGenerator.GetBytes(1024 * 1024 + 7);
+        _dir.WriteFile("a.bin", first);
+        _dir.WriteFile("b.bin", second);
+
+        var result = Tool.Run(_dir.Path, "combine", "a.bin", "b.bin", "out.bin");
+
+        Assert.Equal(0, result.ExitCode);
+        var output = File.ReadAllBytes(_dir.File("out.bin"));
+        Assert.Equal(first.Length + second.Length, output.Length);
+        Assert.Equal(SHA256.HashData([.. first, .. second]), SHA256.HashData(output));
+        Assert.Equal(output.Length, result.Log(LogEvents.FilesCombined).GetProperty("State").GetProperty("Bytes").GetInt64());
+    }
+
+    [Fact]
     public void Combine_can_append_in_place_with_force()
     {
         _dir.WriteFile("log", "line1\n");
