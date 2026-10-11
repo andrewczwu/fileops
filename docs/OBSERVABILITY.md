@@ -78,6 +78,11 @@ Meter `FileOps`:
   `FILEOPS_LOG_FORMAT=json`, parse stderr line by line, and check that the logged exit code,
   byte counts and event sequence match what the process actually returned and wrote.
   With `FILEOPS_TEST_LOG_DIR` set, every invocation is appended to `cli-runs.ndjson`.
+- **OTLP export tests** (`OtlpExportTests`) point the real executable at an in-process OTLP/HTTP
+  receiver and check that a span, the three metrics and Information-level log records arrive with
+  `service.name` and `service.version`, that `--log-level None` stops log export but not spans or
+  metrics, and that a failure is exported as an error span. Payloads are matched by string
+  presence, not decoded, so no protobuf dependency is needed.
 - **CI** renders `cli-runs.ndjson` into the job summary (`scripts/telemetry-summary.sh`) and
   uploads it as an artefact. On failure, the optional `diagnose` job hands the same file to an
   AI assistant with the event-id table above, so the first read of a red build already names
