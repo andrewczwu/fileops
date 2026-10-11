@@ -26,15 +26,12 @@ $ echo $?
 Download the `.deb` from the [latest release](https://github.com/andrewczwu/fileops/releases/latest):
 
 ```sh
-VERSION=1.0.0   # see the releases page for the current version
+VERSION=1.1.0   # see the releases page for the current version
 curl -LO "https://github.com/andrewczwu/fileops/releases/download/v${VERSION}/fileops_${VERSION}_amd64.deb"
 sudo apt install "./fileops_${VERSION}_amd64.deb"
 fileops --version
 man fileops
 ```
-
-The `Depends` line, tarball contents and attested `SHA256SUMS` described below apply from 1.1.0; `v1.0.0`
-predates them.
 
 Works on Debian 12 and 13 and Ubuntu 22.04 and 24.04 (x86-64). The package's only dependency is
 `libc6`; the minimum version is read from the binary at build time (currently `>= 2.34`).
