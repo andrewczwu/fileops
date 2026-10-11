@@ -481,5 +481,5 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-# NuGet package cache used by CI (scripts/ci/nuget-cache-path.sh)
+# NuGet package cache used by CI (NUGET_PACKAGES in .github/workflows/ci.yml)
 .nuget/

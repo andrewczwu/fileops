@@ -14,8 +14,10 @@ failure, and make the pipeline impossible to exercise without pushing.
   `docker/Dockerfile.build` by its own workflow and rebuilt weekly for base-image patches.
 - Each multi-step task is a shell script in `scripts/` with a `Makefile` target; workflows call
   `make <target>` or the script directly. The YAML holds orchestration (job graph, caching, artefacts, summaries) only.
-- The workflows are runnable offline with `act` (`.actrc`); steps that need GitHub services are
-  guarded and skipped locally.
+- The workflows are runnable locally with `act` (`.actrc`); steps that need GitHub services are
+  guarded and skipped locally. (Amended 2026-10-10: originally "offline"; act cannot mount a package
+  cache into a job that declares its own container `options`, so the container job restores packages
+  from the network.)
 - Third-party actions are pinned to commit SHAs; Dependabot keeps them current. Jobs declare
   least-privilege `permissions` and `timeout-minutes` per job, and `concurrency` per workflow.
 

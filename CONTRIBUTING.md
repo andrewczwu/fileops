@@ -52,14 +52,14 @@ C# issues and `shfmt -w` fixes shell formatting; the other tools report only.
 
 ```sh
 docker pull ghcr.io/andrewczwu/fileops-build:main   # once (or build it: make build-image BUILD_IMAGE=ghcr.io/andrewczwu/fileops-build:main)
-make act-build                                       # the CI "Build, test & package" job, offline
+make act-build                                       # the CI "Build, test & package" job (needs network)
 make act-smoke ACT_ARGS='--matrix image:debian:bookworm-slim'
 ```
 
 `make act-<job>` scopes `act` to `ci.yml` (every workflow has a job called `build`, so a bare
 `act -j build` would run three of them). The container job restores NuGet packages from the network,
 so this needs connectivity; `make test` and `make docker-test` work offline from your package cache.
-`.actrc` holds the remaining defaults. Steps that depend on GitHub-hosted services (artifact upload,
+`.actrc` holds the remaining defaults. Steps that depend on GitHub-hosted services (caching, test reports,
 OIDC, code scanning) are skipped under `act` and marked as such in the workflow.
 
 ## Project layout
