@@ -168,7 +168,9 @@ Design choices worth knowing (details in [docs/ARCHITECTURE.md](docs/ARCHITECTUR
   formatter and the linters run on the host because they need no toolchain.
 - **Scripts, not YAML.** Every multi-step job calls a script under `scripts/`, usually through a
   Makefile target, so pipeline logic is reviewable and runnable without pushing.
-- **Runnable offline.** `act -j build` executes the real workflow locally (`.actrc` has the defaults).
+- **Runnable locally.** `make act-build` executes the real CI job with `act` (`.actrc` has the
+  defaults; the Makefile target scopes it to `ci.yml`); `make test` and `make docker-test` run the
+  same steps offline.
 - **Supply-chain hygiene.** Actions pinned to commit SHAs with Dependabot updates, least-privilege
   `permissions` and `timeout-minutes` on every job and `concurrency` on every workflow, locked NuGet
   restores with `NuGetAudit`, secret scanning in a pre-commit hook and in CI, CodeQL (default
