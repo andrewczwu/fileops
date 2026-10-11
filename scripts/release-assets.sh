@@ -24,11 +24,12 @@ rm -rf "${STAGE}" && mkdir -p "${STAGE}"
 cp "${BIN}" "${STAGE}/fileops"
 cp LICENSE packaging/fileops.1 "${STAGE}/"
 
-# Fixed ownership and, when SOURCE_DATE_EPOCH is set, fixed timestamps keep the tarball reproducible.
+# Reproducible bytes: fixed ownership, sorted entries, mtimes from SOURCE_DATE_EPOCH (the tagged
+# commit in the release workflow), and gzip without its header timestamp (-n).
 tar -C "artifacts/stage" \
-  --owner=0 --group=0 --numeric-owner \
-  ${SOURCE_DATE_EPOCH:+--mtime="@${SOURCE_DATE_EPOCH}"} \
-  -czf "${OUT}/fileops_${VERSION}_${RID}.tar.gz" "${DIR}"
+  --sort=name --owner=0 --group=0 --numeric-owner \
+  --mtime="@${SOURCE_DATE_EPOCH:-$(date +%s)}" \
+  -cf - "${DIR}" | gzip -9 -n >"${OUT}/fileops_${VERSION}_${RID}.tar.gz"
 
 (
   cd "${OUT}"
