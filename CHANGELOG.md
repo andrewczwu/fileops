@@ -7,6 +7,12 @@ has no matching section below.
 
 ## [Unreleased]
 
+### Fixed
+
+- `--log-level None` (or `FILEOPS_LOG_LEVEL=None`) now silences OTLP log export too, as documented.
+  Before, an explicit `None` was treated like no choice and the collector still received
+  Information records.
+
 ## [1.1.0] - 2026-10-10
 
 ### Fixed

@@ -95,8 +95,9 @@ Shorthand for
 .BR "\-\-log\-level Information" .
 .TP
 .BI \-\-log\-level " LEVEL"
-Minimum log level written to standard error: Trace, Debug, Information,
-Warning, Error, Critical or None (default None).
+Minimum log level for standard error and for OTLP export: Trace, Debug,
+Information, Warning, Error, Critical or None. Unset, standard error stays
+silent and OTLP export, when enabled, receives Information and above.
 .TP
 .BI \-\-log\-format " FORMAT"
 .B text

@@ -16,10 +16,13 @@ internal sealed class GlobalOptions
     /// <summary>Environment variable that sets the default log format.</summary>
     public const string LogFormatVariable = "FILEOPS_LOG_FORMAT";
 
-    /// <summary>Minimum level of log records written to stderr. <c>None</c> disables logging.</summary>
-    public Option<LogLevel> LogLevel { get; } = new("--log-level")
+    /// <summary>
+    /// Minimum level of log records, for every sink. <c>None</c> disables logging. Null when neither the
+    /// option nor the environment variable chose a level, so the host can apply its own default.
+    /// </summary>
+    public Option<LogLevel?> LogLevel { get; } = new("--log-level")
     {
-        Description = $"Minimum log level written to stderr (Trace, Debug, Information, Warning, Error, Critical, None). Env: {LogLevelVariable}.",
+        Description = $"Minimum log level for stderr and OTLP export (Trace, Debug, Information, Warning, Error, Critical, None). Env: {LogLevelVariable}.",
         Recursive = true,
         DefaultValueFactory = _ => ParseLevel(Environment.GetEnvironmentVariable(LogLevelVariable)),
     };
@@ -49,6 +52,6 @@ internal sealed class GlobalOptions
         return option;
     }
 
-    private static LogLevel ParseLevel(string? value) =>
-        Enum.TryParse<LogLevel>(value, ignoreCase: true, out var level) ? level : Microsoft.Extensions.Logging.LogLevel.None;
+    private static LogLevel? ParseLevel(string? value) =>
+        Enum.TryParse<LogLevel>(value, ignoreCase: true, out var level) ? level : null;
 }
