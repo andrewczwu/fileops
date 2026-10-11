@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
-# Print the NUGET_PACKAGES assignment for the current environment (consumed via $GITHUB_ENV).
-# On GitHub the cache lives in the workspace so actions/cache can restore it regardless of HOME;
-# under act (local runs) the host's cache is mounted at /nuget-cache so builds work offline.
+# Print the NUGET_PACKAGES assignment for the current job (consumed via $GITHUB_ENV).
+# The cache lives inside the workspace so actions/cache can save and restore it regardless of which
+# user the container runs as or what HOME is set to. Under act the same path is used; packages are
+# then restored from the network, since act cannot add a host mount to a job that declares its own
+# container options.
 set -euo pipefail
 
-if [[ -n "${ACT:-}" && -d /nuget-cache ]]; then
-  echo "NUGET_PACKAGES=/nuget-cache"
-else
-  echo "NUGET_PACKAGES=${GITHUB_WORKSPACE:-$PWD}/.nuget/packages"
-fi
+echo "NUGET_PACKAGES=${GITHUB_WORKSPACE:-$PWD}/.nuget/packages"
