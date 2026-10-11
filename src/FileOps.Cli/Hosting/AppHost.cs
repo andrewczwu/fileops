@@ -48,14 +48,14 @@ internal sealed class AppHost : IDisposable
 
         services.AddLogging(logging =>
         {
-            // --log-level governs every sink. When nothing was chosen and an OTLP endpoint is set,
-            // the collector still receives Information and above; the console stays silent.
+            // --log-level governs every sink, including an explicit None. When nothing was chosen and an
+            // OTLP endpoint is set, the collector still receives Information and above; the console stays silent.
             var exporting = settings.OtlpEndpoint is not null;
-            logging.SetMinimumLevel(settings.MinimumLevel == LogLevel.None && exporting ? LogLevel.Information : settings.MinimumLevel);
+            logging.SetMinimumLevel(settings.PipelineLevel);
             // Stamp every record with the current span so logs and traces can be joined.
             logging.Configure(o => o.ActivityTrackingOptions = ActivityTrackingOptions.TraceId | ActivityTrackingOptions.SpanId);
 
-            if (settings.MinimumLevel != LogLevel.None)
+            if (settings.ConsoleLevel != LogLevel.None)
             {
                 // All log output goes to stderr so stdout stays reserved for command results.
                 logging.Services.Configure<ConsoleLoggerOptions>(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
