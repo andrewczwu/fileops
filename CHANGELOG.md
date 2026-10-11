@@ -13,6 +13,12 @@ has no matching section below.
   Before, an explicit `None` was treated like no choice and the collector still received
   Information records.
 
+### Added
+
+- Integration tests export a real run to an in-process OTLP/HTTP receiver and check that spans,
+  metrics and log records arrive with the documented names, resource attributes and log level,
+  on both the managed build and the NativeAOT binary.
+
 ## [1.1.0] - 2026-10-10
 
 ### Fixed
