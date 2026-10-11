@@ -34,7 +34,7 @@ DOCKER_RUN = docker run --rm --platform $(DOCKER_PLATFORM) \
 	-e VERSION=$(VERSION) -e RID=$(RID) -e CONFIG=$(CONFIG) -e CI=$${CI:-} \
 	$(BUILD_IMAGE)
 
-.PHONY: help setup restore build lint format test coverage publish test-native package release-assets smoke lint-deb clean build-image docker-% act-% ci
+.PHONY: help setup restore build lint format test coverage publish test-native package release-assets smoke lint-deb clean build-image ci FORCE
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_%-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -98,14 +98,17 @@ clean: ## Remove build output
 build-image: ## Build the pinned toolchain image used by CI and docker-* targets
 	docker build --platform $(DOCKER_PLATFORM) -t $(BUILD_IMAGE) -f docker/Dockerfile.build docker
 
-docker-%: ## Run any target inside the build container, e.g. make docker-test
+# Pattern rules cannot be declared .PHONY, so they depend on FORCE to always run.
+docker-%: FORCE ## Run any target inside the build container, e.g. make docker-test
 	$(DOCKER_RUN) make $* VERSION=$(VERSION) RID=$(RID) CONFIG=$(CONFIG)
 
 # Extra arguments for act, e.g. ACT_ARGS='--matrix image:debian:bookworm-slim'. Scoped to ci.yml
 # because every workflow has a job called `build`. The container job restores packages from the
 # network: act cannot add a cache mount to a job that declares its own container `options`.
 ACT_ARGS ?=
-act-%: ## Run a ci.yml job locally with act, e.g. make act-build, make act-smoke
+act-%: FORCE ## Run a ci.yml job locally with act, e.g. make act-build, make act-smoke
 	act -W .github/workflows/ci.yml -j $* $(ACT_ARGS)
+
+FORCE:
 
 ci: lint test package lint-deb smoke ## Everything the pipeline runs, in order
